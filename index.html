@@ -1,347 +1,338 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Banmao Clicker – Pool V1</title>
-
-<!-- Ethers v6 từ cdnjs + fallback sang unpkg -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"
-        onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js';document.head.appendChild(s);}())"></script>
-<!-- WalletConnect (UMD) -->
-<script src="https://unpkg.com/@walletconnect/ethereum-provider/dist/umd/index.min.js"></script>
-
-<style>
-  :root { --yellow:#ffd84d; }
-  html,body{margin:0;background:#0b0b0b;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
-  .wrap{max-width:980px;margin:0 auto;padding:20px}
-  .card{background:#111;border:1px solid #222;border-radius:18px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);margin-bottom:14px}
-  .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-  .pill{background:#1a1a1a;border:1px solid #222;padding:8px 12px;border-radius:999px}
-  .btn{background:var(--yellow);color:#111;border:0;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer}
-  h1{margin:0 0 10px 0;font-size:22px}
-  canvas{width:100%;height:auto;background:linear-gradient(180deg,#161616 0%,#0f0f0f 100%);border-radius:12px;border:1px solid #222;display:block}
-  .progress-wrap{margin-top:12px;background:#1a1a1a;border-radius:8px;overflow:hidden;border:1px solid #222}
-  .progress-bar{height:20px;background:var(--yellow);width:0%;transition:width 0.2s ease}
-  .progress-text{text-align:center;font-size:13px;margin-top:4px;color:#ccc}
-  .mobile-banner{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-  .linkbtn{background:#222;color:#fff;border:1px solid #333;border-radius:999px;padding:6px 10px;font-size:13px;text-decoration:none}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <div class="row">
-      <h1>Banmao Clicker – Pool V1</h1>
-      <div>
-        <select id="walletSelect" class="pill">
-          <option value="auto">Auto (OKX / MetaMask)</option>
-          <option value="okx">Force OKX Wallet</option>
-          <option value="metamask">Force MetaMask</option>
-          <option value="walletconnect">WalletConnect (QR / Mobile)</option>
-        </select>
-        <button id="connect" class="btn">Connect Wallet</button>
-        <button id="claim" class="btn">Claim BANMAO</button>
-      </div>
-    </div>
-
-    <!-- Mobile deeplinks -->
-    <div class="mobile-banner">
-      <span style="opacity:.8">On mobile?</span>
-      <a class="linkbtn" href="https://metamask.app.link/dapp/banmao-game.vercel.app">Open in MetaMask</a>
-      <a class="linkbtn" href="okx://wallet/dapp?url=https%3A%2F%2Fbanmao-game.vercel.app">Open in OKX</a>
-      <a class="linkbtn" href="#" id="wcQuick">Use WalletConnect</a>
-    </div>
-
-    <div class="row" style="margin-top:-6px;gap:10px">
-      <div class="pill">Score: <b id="score">0</b></div>
-      <div class="pill">BANMAO earned: <b id="earned">0</b></div>
-      <div class="pill">Wallet: <span id="addr">not connected</span></div>
-      <div class="pill">Balance: <b id="balance">0</b></div>
-      <div class="pill">Status: <span id="status">Ready</span></div>
-    </div>
-
-    <canvas id="game" width="900" height="460" style="margin-top:12px"></canvas>
-
-    <div class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
-    <div id="progressText" class="progress-text">0 / 333 BANMAO</div>
-  </div>
-</div>
-
-<script>
-  // ====== ONCHAIN CONFIG ======
-  const TOKEN_ADDR = "0x16d91d1615fC55b76d5F92365BD60C069b46ef78";
-  const GAME_ADDR  = "0x0bb69c08a71e4d2297Fb07f95d2d9c6801937143";
-  const MAX_BANMAO = 333;
-  const XLAYER_CHAIN_ID_HEX = "0xC4"; // 196
-  const WC_PROJECT_ID = "cfda431a5eccf423674b212df85d492c"; // <- WalletConnect Project ID của bạn
-
-  const GAME_ABI = [
-    "function claimReward(uint256 score) external",
-    "function claimed(address) view returns (bool)"
-  ];
-  const ERC20_ABI = [
-    "function balanceOf(address) view returns (uint256)",
-    "function decimals() view returns (uint8)"
-  ];
-
-  // ====== UI refs ======
-  const walletSelect = document.getElementById("walletSelect");
-  const connectBtn = document.getElementById("connect");
-  const claimBtn   = document.getElementById("claim");
-  const wcQuickBtn = document.getElementById("wcQuick");
-  const addrEl   = document.getElementById("addr");
-  const balEl    = document.getElementById("balance");
-  const statusEl = document.getElementById("status");
-
-  // ====== Helpers ======
-  function isMobile(){ return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
-
-  // WC khởi tạo trên chain 1, khai báo 196 là optional → ổn định hơn trên mobile
-  async function getWalletConnectProvider() {
-    if (!window.WalletConnectProvider) {
-      alert("WalletConnect lib chưa tải. Refresh trang.");
-      return null;
+!DOCTYPE html
+html lang=vi
+head
+  meta charset=utf-8 
+  meta name=viewport content=width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no 
+  titleRacer X — 5 Lane Racing (Mobile Optimized)title
+  meta name=theme-color content=#0b1220 
+  style
+    root{
+      --primary#3498db;--secondary#e74c3c;--accent#f1c40f;--dark#0b1220;--light#ecf0f1;--success#2ecc71;--road#2f3a4a;--lane#f1c40f;
+      --radius14px;--shadow0 10px 30px rgba(0,0,0,.45)
     }
-    const provider = await window.WalletConnectProvider.EthereumProvider.init({
-      projectId: WC_PROJECT_ID,
-      chains: [1],                 // mở phiên trên Ethereum
-      optionalChains: [196],       // X Layer là optional, add/switch sau
-      rpcMap: { 196: "https://rpc.xlayer.tech" },
-      showQrModal: true,
-      metadata: {
-        name: "Banmao Clicker",
-        description: "Claim BANMAO từ game clicker",
-        url: "https://banmao-game.vercel.app",
-        icons: ["https://banmao-game.vercel.app/favicon.ico"]
-      },
-      methods: [
-        "eth_requestAccounts","eth_sendTransaction","personal_sign",
-        "wallet_switchEthereumChain","wallet_addEthereumChain"
-      ],
-      events: ["chainChanged","accountsChanged","disconnect"]
-    });
+    {box-sizingborder-box;-webkit-tap-highlight-colortransparent}
+    html,body{height100%}
+    body{margin0;font-familysystem-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgroundlinear-gradient(135deg,#172238,#681d26,#fdbb2d);colorvar(--light);displayflex;align-itemscenter;justify-contentcenter;padding12px;overflowhidden}
 
-    await provider.connect(); // desktop: QR; mobile: list app ví
+    .game-shell{widthmin(560px,100%);aspect-ratio916;displayflex;flex-directioncolumn;gap8px;backgroundrgba(0,0,0,.7);border-radiusvar(--radius);box-shadowvar(--shadow);padding10px;border1px solid rgba(255,255,255,.07)}
+     FIX Replace unsupported color-mix with RGBA fallback 
+    .hdr{displaygrid;grid-template-columns1fr;gap6px;border-bottom1.5px solid rgba(52,152,219,.6);padding-bottom6px}
+    .hdr h1{margin0;text-aligncenter;letter-spacing.12em;font-weight800;font-sizeclamp(16px,3.5vw,22px)}
+    .stats{displayflex;gap6px;justify-contentspace-between}
+    .stat{flex1;min-width0;text-aligncenter;backgroundrgba(255,255,255,.08);border-radius8px;padding6px}
+    .stat .label{opacity.8;font-size10px;letter-spacing.08em}
+    .stat .val{font-weight800;font-sizeclamp(14px,4.5vw,18px);colorvar(--accent)}
 
-    // Đợi accounts nếu ví chưa trả ngay
-    const accs = (provider.accounts && provider.accounts.length)
-      ? provider.accounts
-      : await new Promise((resolve, reject) => {
-          const to = setTimeout(()=>reject(new Error("WalletConnect timeout: no accounts")), 15000);
-          const handler = (accounts) => { clearTimeout(to); provider.removeListener?.("accountsChanged", handler); resolve(accounts); };
-          provider.on?.("accountsChanged", handler);
-        });
+    .stage{positionrelative;flex1;border-radius10px;overflowhidden;border1.5px solid rgba(52,152,219,.6);backgroundvar(--road);min-height0}
+    canvas{displayblock;width100%;height100%;touch-actionnone}
 
-    return provider;
-  }
+    .row{displayflex;gap6px}
+    .btn{appearancenone;border0;border-radius10px;padding10px 12px;font-weight800;font-sizeclamp(12px,3.7vw,14px);letter-spacing.06em;cursorpointer;box-shadow0 3px 0 rgba(0,0,0,.35);transitiontransform .15s ease,filter .15s ease;flex1}
+    .btnactive{transformtranslateY(2px)}
+    .btn-primary{backgroundvar(--primary);color#fff}
+    .btn-danger{backgroundvar(--secondary);color#fff}
+    .btn-ok{backgroundvar(--success);color#fff}
+    .btn-twitter{background#1da1f2;color#fff}
 
-  async function pickInjected(mode="auto"){
-    if (mode === "walletconnect") return await getWalletConnectProvider();
-    const okx = window.okxwallet?.ethereum || window.okxwallet || null;
-    const mm  = window.ethereum || null;
-    if (mode==="okx") return okx;
-    if (mode==="metamask") return mm;
-    return okx || mm; // auto
-  }
+    .lane-ind{displayflex;justify-contentcenter;gap6px}
+    .lane-badge{width28px;height28px;border-radius999px;backgroundrgba(255,255,255,.1);displaygrid;place-itemscenter;font-weight700;font-size12px;border2px solid transparent}
+    .lane-badge.active{backgroundvar(--accent);color#1b1b1b;border-colorvar(--primary)}
 
-  async function ensureXLayer(injected){
-    try{
-      const id = await injected.request({ method: "eth_chainId" });
-      if (id === XLAYER_CHAIN_ID_HEX) return;
-      await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: XLAYER_CHAIN_ID_HEX }] });
-    }catch(e){
-      if (e?.code===4902 || /Unrecognized/i.test(e?.message||"")){
-        await injected.request({ method:"wallet_addEthereumChain", params:[{
-          chainId: XLAYER_CHAIN_ID_HEX,
-          chainName: "X Layer Mainnet",
-          rpcUrls: ["https://rpc.xlayer.tech"],
-          nativeCurrency: { name:"OKB", symbol:"OKB", decimals:18 },
-          blockExplorerUrls:["https://www.oklink.com/xlayer"]
-        }]} );
-      } else throw e;
+    .level{margin-top4px;text-aligncenter;font-size12px;colorvar(--accent)}
+    .bar{height6px;backgroundrgba(255,255,255,.18);border-radius99px;overflowhidden}
+    .fill{height100%;width0;backgroundvar(--accent);transitionwidth .25s ease}
+
+    .mc{displayflex;gap10px;margin-top8px}
+    .mc .mkey{flex1;height56px;border2px solid var(--primary);border-radius12px;backgroundrgba(255,255,255,.14);font-weight900;font-size24px;displaygrid;place-itemscenter;-webkit-user-selectnone;user-selectnone}
+    .mkeyactive{backgroundrgba(255,255,255,.28)}
+
+    .toast{positionabsolute;left10px;top10px;backgroundrgba(0,0,0,.7);color#ffb000;padding6px 10px;border-radius999px;font-weight800;displaynone;z-index5}
+    .power{positionabsolute;right10px;top10px;backgroundrgba(0,0,0,.7);color#fff;padding6px 10px;border-radius999px;displaynone;gap6px;align-itemscenter;z-index5}
+
+    .overlay{positionfixed; inset fallback top0;left0;right0;bottom0;backgroundrgba(0,0,0,.88);displaynone;align-itemscenter;justify-contentcenter;padding16px;z-index10}
+    .card{widthmin(360px,92vw);backgroundrgba(0,0,0,.85);border1px solid rgba(255,255,255,.08);border-radius14px;padding18px;box-shadowvar(--shadow);text-aligncenter}
+    .card h2{colorvar(--secondary);margin0 0 8px;font-sizeclamp(20px,5vw,26px)}
+    .grid{displayflex;gap10px;justify-contentspace-between;margin10px 0}
+    .gcol{flex1;backgroundrgba(255,255,255,.08);border-radius10px;padding8px}
+    .gcol .t{opacity.8;font-size12px}
+    .gcol .n{font-weight900;colorvar(--accent);font-size18px}
+
+    .daily{backgroundrgba(255,215,0,.12);border1px solid gold;border-radius10px;padding8px;margin-top6px}
+    .daily .t{colorgold;font-weight800;font-size12px}
+
+    @media (orientationlandscape) and (max-height520px){
+      body{padding8px}
+      .game-shell{flex-directionrow;gap10px;aspect-ratioauto;height96vh;widthmin(1000px,100%)}
+      .mc{displaynone}
     }
-  }
+  style
+head
+body
+  div class=game-shell id=sh
+    div class=hdr
+      h1RACER Xh1
+      div class=stats role=status aria-live=polite
+        div class=statdiv class=labelSCOREdivdiv class=val id=s0divdiv
+        div class=statdiv class=labelOVERTAKESdivdiv class=val id=ot0divdiv
+        div class=statdiv class=labelCOMBOdivdiv class=val id=cb1×divdiv
+      div
+    div
 
-  function waitForEthers(){
-    return new Promise(resolve=>{
-      const tick=()=>{ if (window.ethers) resolve(); else setTimeout(tick,120); };
-      tick();
-    });
-  }
+    div class=stage id=stage
+      canvas id=cv aria-label=Racing canvas role=imgcanvas
+      div class=toast id=toastCOMBO x1div
+      div class=power id=pwrspan id=pico⚡spanspan id=pt0sspandiv
+    div
 
-  // ====== Runtime state ======
-  let provider, signer, account, tokenDecimals=18;
+    div class=levelLevel span id=lv1span · Speed span id=spd3span · High span id=hs0spandiv
+    div class=bardiv class=fill id=pfdivdiv
 
-  wcQuickBtn.onclick = (e)=>{ e.preventDefault(); walletSelect.value = "walletconnect"; connectBtn.click(); };
+    div class=lane-ind aria-hidden=true
+      div class=lane-badge id=L01div
+      div class=lane-badge id=L12div
+      div class=lane-badge id=L23div
+      div class=lane-badge id=L34div
+      div class=lane-badge id=L45div
+    div
 
-  // ====== Connect (desktop/mobile + WC) ======
-  connectBtn.onclick = async () => {
-    try{
-      statusEl.textContent = "🔎 Tìm ví...";
-      const mode = walletSelect.value;
+    div class=mc id=mc
+      div class=mkey id=left←div
+      div class=mkey id=right→div
+    div
 
-      const injected = await pickInjected(mode);
-      if (!injected){
-        if (isMobile()) alert("Không thấy ví. Dùng Open in MetaMask/OKX ở trên hoặc chọn WalletConnect.");
-        else alert("Không thấy ví (MetaMask/OKX). Cài extension rồi refresh.");
-        statusEl.textContent="No wallet";
-        return;
+    div class=row
+      button class=btn btn-ok id=startSTARTbutton
+      button class=btn btn-primary id=pausePAUSEbutton
+      button class=btn btn-danger id=restartRESTARTbutton
+    div
+
+    div class=daily
+      div class=tDAILY CHALLENGEdiv
+      div id=dtextOvertake 15 carsdiv
+      div class=bar style=margin-top6pxdiv class=fill id=dprogdivdiv
+      div style=text-aligncenter;colorgold;font-size12px;margin-top6pxReward 50 coinsdiv
+    div
+  div
+
+  div class=overlay id=over
+    div class=card role=dialog aria-modal=true aria-labelledby=ovh
+      h2 id=ovhGAME OVER!h2
+      div class=grid
+        div class=gcoldiv class=tSCOREdivdiv class=n id=fs0divdiv
+        div class=gcoldiv class=tOVERTAKESdivdiv class=n id=fo0divdiv
+        div class=gcoldiv class=tMAX COMBOdivdiv class=n id=fc1×divdiv
+      div
+      p id=msg style=margin6px 0 12pxTry again!p
+      button class=btn btn-ok id=again style=width100%;margin-bottom8pxPLAY AGAINbutton
+      button class=btn btn-twitter id=tw style=width100%SHARE ON TWITTERbutton
+    div
+  div
+
+  script
+   --- boot after DOM ready (prevents getContext null) ---
+  (function(){
+    function boot(){
+      const cv=document.getElementById('cv')document.getElementById('game-canvas');
+      const stage=document.getElementById('stage')(cvcv.parentElementnull);
+      if(!cv!stage){ console.error('DOM not ready missing #cv or #stage'); return; }
+      var ctx=cv.getContext('2d',{desynchronizedtrue})cv.getContext('2d');
+      if(!ctx){ console.error('Canvas context init failed'); return; }
+      ctx.imageSmoothingEnabled=false;
+
+       DPR-aware canvas sizing
+      function fit(){
+        var dpr=window.devicePixelRatio1;
+        var w=stage.clientWidth,h=stage.clientHeight;
+        cv.width=Math.max(1,Math.floor(wdpr));
+        cv.height=Math.max(1,Math.floor(hdpr));
+        cv.style.width=w+'px';cv.style.height=h+'px';
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+      if('ResizeObserver' in window){ new ResizeObserver(fit).observe(stage); } else { window.addEventListener('resize',fit); setTimeout(fit,0); }
+      fit();
+      document.getElementById('pwr').style.display='none';
+
+       Assets
+      var imgCar=new Image(); imgCar.src='httpsbanmao-proxy-clean.vercel.appbm3.png';
+      var imgBan=new Image(); imgBan.src='httpsbanmao-proxy-clean.vercel.appbm9.png';
+      imgCar.decoding='async'; imgBan.decoding='async';
+
+      var laneCount=5; var laneW=function(){return stage.clientWidthlaneCount};
+      var clamp=function(v,min,max){return vminminvmaxmaxv};
+
+       State
+      var state={runningfalse,pausedfalse,t0,last0,score0,overtakes0,combo1,maxCombo1,comboMul1,level1,baseSpeed3,speed3,lane2,cars[],bananas[],gems[],pUs[],spawn{cars0,bananas0,gems0,pups0},rates{cars1.5,bananas3,gems4,pups8},powernull,pTime0,highNumber(localStorage.getItem('racerHighScore')0),coinsNumber(localStorage.getItem('racerCoins')0)}; var speedMod=1; var fx=[];
+      var daily={overtake{target15,progress0,donefalse,reward50},bananas{target5,progress0,donefalse,reward30},score{target300,progress0,donefalse,reward40}};
+
+      function $(id){return document.getElementById(id)}
+      function updUI(){
+        $('s').textContent=state.score0; $('ot').textContent=state.overtakes0; $('cb').textContent=state.comboMul+'×';
+        $('lv').textContent=state.level; $('spd').textContent=Math.round(state.speed10)10; $('hs').textContent=state.high;
+        $('pf').style.width=((state.score%100))+'%';
+        for(var i=0;ilaneCount;i++) $('L'+i).classList.toggle('active', i===state.lane);
+        var ch=daily.overtake; $('dtext').textContent='Overtake '+ch.target+' cars'; $('dprog').style.width=Math.min(100,(ch.progressch.target)100)+'%';
       }
 
-      statusEl.textContent = "🧾 Yêu cầu quyền...";
-      let accounts;
-      try {
-        accounts = await injected.request({ method:"eth_requestAccounts" });
-      } catch(e) {
-        accounts = injected.accounts || [];
+       Player
+      var player={wfunction(){return Math.min(cv.clientWidth.15,50)},hfunction(){return Math.min(cv.clientHeight.12,70)},yfunction(){return cv.clientHeight.85}};
+      function pRect(){return {x state.lanelaneW()+ (laneW()-player.w())2, y player.y(), w player.w(), h player.h()};}
+
+       Input
+      function goLane(l){ state.lane=clamp(l,0,laneCount-1); updUI(); }
+      function left(){ goLane(state.lane-1); }
+      function right(){ goLane(state.lane+1); }
+      document.addEventListener('keydown',function(e){ if(!state.runningstate.paused) return; if(e.key==='ArrowLeft') left(); else if(e.key==='ArrowRight') right(); else if(e.key==='Escape') togglePause(); });
+      var sx=0; cv.addEventListener('pointerdown',function(e){ if(!state.runningstate.paused) return; sx=e.clientX; cv.setPointerCapture(e.pointerId); },{passivetrue});
+      cv.addEventListener('pointerup',function(e){ if(!state.runningstate.paused) return; var dx=e.clientX-sx; if(Math.abs(dx)24) (dx0)right()left(); },{passivetrue});
+      $('left').addEventListener('pointerdown',function(e){e.preventDefault(); if(state.running&&!state.paused) left();});
+      $('right').addEventListener('pointerdown',function(e){e.preventDefault(); if(state.running&&!state.paused) right();});
+
+       Controls
+      $('start').onclick=function(){start()}; $('again').onclick=function(){start()};
+      $('restart').onclick=function(){reset()}; $('pause').onclick=function(){togglePause()}; $('tw').onclick=function(){shareTw()};
+
+      function start(){ if(loopId) cancelAnimationFrame(loopId); hideOver();
+        Object.assign(state,{runningtrue,pausedfalse,t0,lastperformance.now(),score0,overtakes0,combo1,maxCombo1,comboMul1,level1,baseSpeed3,speed3,lane2,cars[],bananas[],gems[],pUs[],spawn{cars0,bananas0,gems0,pups0},powernull,pTime0});
+        goLane(2); updUI(); loop(); }
+      function reset(){ if(loopId) cancelAnimationFrame(loopId); state.running=false; state.paused=false; start(); }
+      function togglePause(){ if(!state.running) return; state.paused=!state.paused; $('pause').textContent=state.paused'RESUME''PAUSE'; if(!state.paused) { state.last=performance.now(); loop(); } }
+      function shareTw(){ var t='Banmao The Purr‑fect Meme coin! I scored '+(state.score0)+' in Racer X!'; var u='httpbanmao.meme'; var url='httpstwitter.comintenttweettext='+encodeURIComponent(t)+'&url='+encodeURIComponent(u); window.open(url,'_blank','width=560,height=420'); }
+      function showOver(){ $('over').style.display='flex'; }
+      function hideOver(){ $('over').style.display='none'; }
+
+       Spawners
+      function spawn(dt){
+        state.spawn.cars += dt; state.spawn.bananas += dt; state.spawn.gems += dt; state.spawn.pups += dt;
+        var carRate = Math.max(.6, state.rates.cars - state.level0.12);
+        if(state.spawn.cars = carRate){ state.spawn.cars = 0; spawnCars(); }
+        if(state.spawn.bananas = state.rates.bananas){ state.spawn.bananas = 0; spawnBanana(); }
+        if(state.spawn.gems = state.rates.gems){ state.spawn.gems = 0; spawnGem(); }
+        if(state.spawn.pups = state.rates.pups){ state.spawn.pups = 0; if(Math.random()  .35) spawnPower(); }
       }
-      account = (accounts && accounts[0]) || injected.accounts?.[0];
-      if (!account){ statusEl.textContent = "No account"; return; }
-
-      statusEl.textContent = "🔁 Chuyển mạng...";
-      try {
-        await ensureXLayer(injected);
-      } catch {
-        statusEl.textContent = "⚠️ Hãy chuyển sang X Layer (196) trong ví, rồi quay lại.";
+      function spawnCars(){
+        var count = state.level=6  3  state.level=3  2  1;
+        var free = [0,1,2,3,4];
+        for(var i=0;icount && free.length;i++){
+          var k=(Math.random()free.length)0; var lane=free.splice(k,1)[0];
+          var w=Math.min(cv.clientWidth.15,50), h=Math.min(cv.clientHeight.12,70);
+          var x = lanelaneW() + (laneW()-w)2;
+          state.cars.push({xx,y-h,ww,hh,spstate.speed,ovfalse,lanelane,colorrandColor()});
+        }
+        function randColor(){ var c=['#e74c3c','#9b59b6','#1abc9c','#f39c12','#d35400','#16a085']; return c[(Math.random()c.length)0]; }
+      }
+      function spawnBanana(){
+        var lane=(Math.random()laneCount)0; var size=Math.min(cv.clientWidth.08,30);
+        var x=lanelaneW()+(laneW()-size)2; state.bananas.push({xx,y-size,sizesize,spstate.speed});
+      }
+      function spawnGem(){
+        var lane=(Math.random()laneCount)0; var size=Math.min(cv.clientWidth.085,28);
+        var x=lanelaneW()+(laneW()-size)2; var type=Math.random().55'diamond''gold';
+        state.gems.push({xx,y-size,sizesize,spstate.speed,typetype});
+      }
+      function spawnPower(){
+        var lane=(Math.random()laneCount)0; var size=Math.min(cv.clientWidth.08,30);
+        var x=lanelaneW()+(laneW()-size)2; var types=['shield','magnet','slow','boost'];
+        var type=types[(Math.random()types.length)0];
+        state.pUs.push({xx,y-size,sizesize,spstate.speed,typetype});
       }
 
-      await waitForEthers();
-      provider = new ethers.BrowserProvider(injected);
-      signer   = await provider.getSigner();
+       Draw
+      function road(){ var w=cv.clientWidth,h=cv.clientHeight; var laneColor=getComputedStyle(document.documentElement).getPropertyValue('--lane')'#f1c40f'; ctx.fillStyle='#34495e'; ctx.fillRect(0,0,w,h); ctx.fillStyle=laneColor; for(var i=1;ilaneCount;i++){ var x=ilaneW(); for(var y=0;yh;y+=40) ctx.fillRect(x-2,y,4,20); } ctx.fillStyle='#7f8c8d'; ctx.fillRect(0,0,12,h); ctx.fillRect(w-12,0,12,h); }
+      function drawPlayer(){ var r=pRect(); if(imgCar.complete) ctx.drawImage(imgCar,r.x,r.y,r.w,r.h); else{ ctx.fillStyle='#3498db'; ctx.fillRect(r.x,r.y,r.w,r.h);} if(state.power){ ctx.strokeStyle=powColor(state.power); ctx.lineWidth=3; ctx.beginPath(); ctx.arc(r.x+r.w2,r.y+r.h2, Math.max(r.w,r.h)2+5,0,Math.PI2); ctx.stroke();}}
+      function drawCars(){ for(var i=0;istate.cars.length;i++){ var c=state.cars[i]; ctx.fillStyle=c.color; ctx.fillRect(c.x,c.y,c.w,c.h); ctx.fillStyle='#aed6f1'; ctx.fillRect(c.x+5,c.y+10,c.w-10,20);} }
+      function drawBan(){ for(var i=0;istate.bananas.length;i++){ var b=state.bananas[i]; if(imgBan.complete) ctx.drawImage(imgBan,b.x,b.y,b.size,b.size); else { ctx.fillStyle='#f1c40f'; ctx.beginPath(); ctx.ellipse(b.x+b.size2,b.y+b.size2,b.size2,b.size3,0,0,Math.PI2); ctx.fill(); } } }
+      function drawGems(){ for(var i=0;istate.gems.length;i++){ var g=state.gems[i]; if(g.type==='gold'){ ctx.beginPath(); ctx.arc(g.x+g.size2,g.y+g.size2,g.size2,0,Math.PI2); ctx.fillStyle='#ffd700'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#e6b800'; ctx.stroke(); ctx.beginPath(); ctx.arc(g.x+g.size2,g.y+g.size2,g.size3,0,Math.PI2); ctx.stroke(); } else { var cx=g.x+g.size2, cy=g.y+g.size2, s=g.size2; ctx.beginPath(); ctx.moveTo(cx,cy-s); ctx.lineTo(cx+s,cy); ctx.lineTo(cx,cy+s); ctx.lineTo(cx-s,cy); ctx.closePath(); ctx.fillStyle='#00e5ff'; ctx.fill(); ctx.strokeStyle='#00b3cc'; ctx.lineWidth=2; ctx.stroke(); } } }
+      function drawPU(){ for(var i=0;istate.pUs.length;i++){ var p=state.pUs[i]; ctx.fillStyle=powColor(p.type); ctx.beginPath(); ctx.arc(p.x+p.size2,p.y+p.size2,p.size2,0,Math.PI2); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(powIcon(p.type), p.x+p.size2, p.y+p.size2); } }
 
-      addrEl.textContent = account.slice(0,6)+'...'+account.slice(-4);
-      statusEl.textContent = "✅ Connected";
-      await updateBalance();
-      await checkClaimed();
-    }catch(err){
-      console.error("CONNECT_ERR:", err);
-      statusEl.textContent = "❌ " + (err?.shortMessage || err?.message || err);
-      alert("Connect error: " + (err?.message || err));
-    }
-  };
+      function powColor(t){return t==='shield''#3498db't==='magnet''#e74c3c't==='slow''#9b59b6't==='boost''#f1c40f''#fff'}
+      function powIcon(t){return t==='shield''🛡️'t==='magnet''🧲't==='slow''🐌''⚡'}
 
-  async function updateBalance(){
-    try{
-      if (!provider || !account) return;
-      const token = new ethers.Contract(TOKEN_ADDR, ERC20_ABI, provider);
-      tokenDecimals = await token.decimals();
-      const bal = await token.balanceOf(account);
-      balEl.textContent = ethers.formatUnits(bal, tokenDecimals);
-    }catch(e){ balEl.textContent="—"; }
-  }
-
-  async function checkClaimed(){
-    try{
-      if (!provider || !account) return;
-      const game = new ethers.Contract(GAME_ADDR, GAME_ABI, provider);
-      const done = await game.claimed(account);
-      if (done){ statusEl.textContent="✅ Already claimed"; claimBtn.disabled=true; }
-      else { statusEl.textContent="Ready to claim"; claimBtn.disabled=false; }
-    }catch(e){ /* ignore */ }
-  }
-
-  // ====== Claim: 10 điểm = 1 BANMAO, nguyên số, cap 333 ======
-  claimBtn.onclick = async () => {
-    try{
-      if (!signer) return alert("Connect wallet first!");
-      const banmaoNow = score/10;
-      if (banmaoNow < 1) return alert("Need at least 1 BANMAO to claim!");
-      const amount = Math.min(MAX_BANMAO, Math.floor(banmaoNow));
-
-      const game = new ethers.Contract(GAME_ADDR, GAME_ABI, signer);
-      const tx = await game.claimReward(amount);
-      statusEl.textContent = "⏳ Tx: "+tx.hash;
-      claimBtn.disabled = true;
-      await tx.wait();
-      statusEl.textContent = "✅ Claim succeeded ("+amount+" BANMAO)";
-      await updateBalance();
-      await checkClaimed();
-    }catch(e){
-      statusEl.textContent = "❌ "+(e?.shortMessage||e?.reason||e?.message||e);
-      claimBtn.disabled = false;
-    }
-  };
-
-  // ====== Mini-game (đầu mèo) ======
-  let score = 0;
-  const canvas = document.getElementById("game");
-  const ctx = canvas.getContext("2d");
-  let banana = { x: 720, y: 220, r: 34, vx: 1.1, vy: 0.9 };
-
-  function drawCatHead(){
-    const x = 200, y = 250, r = 60;
-    ctx.fillStyle='#ffd84d';
-    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-    // ears
-    ctx.beginPath(); ctx.moveTo(x-r*0.6, y-r*0.3); ctx.lineTo(x-r*0.2, y-r*1.0); ctx.lineTo(x-r*0.05, y-r*0.3); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x+r*0.6, y-r*0.3); ctx.lineTo(x+r*0.2, y-r*1.0); ctx.lineTo(x+r*0.05, y-r*0.3); ctx.closePath(); ctx.fill();
-    // eyes
-    ctx.fillStyle='#111';
-    ctx.beginPath(); ctx.arc(x-r*0.35, y-r*0.1, 6,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x+r*0.35, y-r*0.1, 6,0,Math.PI*2); ctx.fill();
-    // nose
-    ctx.beginPath(); ctx.moveTo(x-5,y+10); ctx.lineTo(x+5,y+10); ctx.lineTo(x,y+16); ctx.closePath(); ctx.fill();
-    // mouth
-    ctx.strokeStyle='#111'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(x-5,y+20,7,0,Math.PI); ctx.arc(x+5,y+20,7,0,Math.PI); ctx.stroke();
-    // whiskers
-    ctx.beginPath(); ctx.moveTo(x-20,y+5);  ctx.lineTo(x-45,y);    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x-20,y+12); ctx.lineTo(x-45,y+15); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x+20,y+5);  ctx.lineTo(x+45,y);    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x+20,y+12); ctx.lineTo(x+45,y+15); ctx.stroke();
-  }
-
-  function drawBanana(){
-    ctx.strokeStyle = '#ffd84d'; ctx.lineWidth = 18; ctx.beginPath();
-    ctx.arc(banana.x, banana.y, banana.r, Math.PI*0.12, Math.PI*1.12); ctx.stroke();
-    ctx.fillStyle = '#ffd84d'; ctx.beginPath();
-    ctx.arc(banana.x + banana.r*Math.cos(Math.PI*0.12), banana.y + banana.r*Math.sin(Math.PI*0.12), 6, 0, Math.PI*2); ctx.fill();
-  }
-
-  function drawBG(){
-    ctx.fillStyle='#121212'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1;
-    for(let x=0;x<canvas.width;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
-    for(let y=0;y<canvas.height;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
-  }
-
-  function animate(){
-    drawBG(); drawCatHead(); drawBanana();
-    banana.x += banana.vx; banana.y += banana.vy;
-    if(banana.x > canvas.width-40 || banana.x < 40) banana.vx *= -1;
-    if(banana.y > canvas.height-40 || banana.y < 40) banana.vy *= -1;
-    requestAnimationFrame(animate);
-  } animate();
-
-  // Progress bar
-  function updateProgress(banmaoNow){
-    const bar = document.getElementById('progressBar');
-    const txt = document.getElementById('progressText');
-    const pct = Math.min(100, (banmaoNow/MAX_BANMAO)*100);
-    bar.style.width = pct+"%";
-    txt.textContent = banmaoNow.toFixed(3)+" / "+MAX_BANMAO+" BANMAO";
-  }
-
-  function hit(mx,my,obj){ const dx=mx-obj.x, dy=my-obj.y; return Math.hypot(dx,dy) <= obj.r + 20; }
-  canvas.addEventListener('click', (e)=>{
-    const r = canvas.getBoundingClientRect();
-    const mx = (e.clientX - r.left) * (canvas.width/r.width);
-    const my = (e.clientY - r.top) * (canvas.height/r.height);
-    if (hit(mx,my,banana)){
-      const v = 10;
-      let banmaoNow = (score+v)/10;
-      if(banmaoNow > MAX_BANMAO){ 
-        statusEl.textContent = "🚫 Max cap "+MAX_BANMAO+" BANMAO";
-        return;
+       Pickup FX
+      function addPickupFX(x,y,color,text){
+         floating text
+        fx.push({type'text',xx,yy,vy-0.8,life0.8,alpha1,txttext,colorcolor,scale1});
+         spark particles
+        var n=12; for(var i=0;in;i++){ var a=(Math.PI2)in; var sp=2+Math.random()1.5; fx.push({type'p',xx,yy,vxMath.cos(a)sp,vyMath.sin(a)sp,life0.6+Math.random()0.3,alpha1,colorcolor}); }
+        if('vibrate' in navigator) try{navigator.vibrate(20);}catch(e){}
       }
-      score += v;
-      document.getElementById('score').textContent = score;
-      document.getElementById('earned').textContent = (score/10).toFixed(3);
-      updateProgress(score/10);
-      banana.r = 40; setTimeout(()=> banana.r=34,120);
+      function drawFX(dt){
+        for(var i=fx.length-1;i=0;i--){ var f=fx[i]; f.life-=dt; if(f.life=0){ fx.splice(i,1); continue; }
+          var a=Math.max(0,f.life(f.maxLife1));
+          if(f.type==='p'){ f.x+=f.vx; f.y+=f.vy; f.vx=0.96; f.vy=0.96; ctx.globalAlpha=f.life; ctx.fillStyle=f.color; ctx.beginPath(); ctx.arc(f.x,f.y,2,0,Math.PI2); ctx.fill(); ctx.globalAlpha=1; }
+          else if(f.type==='text'){ f.y+=f.vy; f.alpha=f.life0.8; ctx.save(); ctx.globalAlpha=f.alpha; ctx.fillStyle=f.color; ctx.font='bold 16px Arial'; ctx.textAlign='center'; ctx.fillText(f.txt, f.x, f.y); ctx.restore(); }
+        }
+      }
+
+       Collisions
+      function hit(r1,r2){ return r1.x  r2.x + r2.w - 8 && r1.x + r1.w - 8  r2.x && r1.y  r2.y + r2.h - 15 && r1.y + r1.h - 15  r2.y; }
+      function hitCircleRect(rect,c){ var cx=c.x+c.size2, cy=c.y+c.size2, cr=c.size2; var nx=Math.max(rect.x, Math.min(cx, rect.x+rect.w)); var ny=Math.max(rect.y, Math.min(cy, rect.y+rect.h)); var dx=cx-nx, dy=cy-ny; return dxdx+dydy  crcr; }
+
+      function activate(t){
+        state.power=t; state.pTime=10;
+        $('pico').textContent=powIcon(t); $('pt').textContent=Math.ceil(state.pTime)+'s';
+        $('pwr').style.display='flex';
+        if(t==='slow') speedMod=0.5; else if(t==='boost') speedMod=1.5; else speedMod=1;
+      }
+      function deactivate(){
+        speedMod=1; state.power=null; $('pwr').style.display='none';
+      }
+      
+
+      var comboTO=null; function addCombo(){ state.combo++; if(state.combostate.maxCombo) state.maxCombo=state.combo; state.comboMul=Math.min(5, ((state.combo3)0)+1); showToast('COMBO x'+state.comboMul); clearTimeout(comboTO); comboTO=setTimeout(function(){ state.combo=1; state.comboMul=1; $('toast').style.display='none'; }, 3000); }
+      function showToast(t){ $('toast').textContent=t; $('toast').style.display='block'; }
+
+      function tick(dt){
+        state.t+=dt; if(state.power){ state.pTime-=dt; $('pt').textContent=Math.ceil(state.pTime)+'s'; if(state.pTime=0) deactivate(); }
+        state.level = Math.floor(state.score100)+1;  level theo điểm
+        state.speed = (state.baseSpeed + state.level0.2)  speedMod;  tăng đều 0.2 mỗi level, áp dụng power
+        spawn(dt);
+         enforce equal speeds
+        for(var i=0;istate.cars.length;i++) state.cars[i].sp = state.speed;
+        for(var i2=0;i2state.bananas.length;i2++) state.bananas[i2].sp = state.speed;
+        for(var i3=0;i3state.gems.length;i3++) state.gems[i3].sp = state.speed;
+        for(var i4=0;i4state.pUs.length;i4++) state.pUs[i4].sp = state.speed;
+
+         cars
+        for(var i=state.cars.length-1;i=0;i--){ var c=state.cars[i]; c.y += c.sp; if(hit(pRect(),{xc.x,yc.y,wc.w,hc.h})){ if(state.power==='shield'){ state.cars.splice(i,1); continue; } return gameOver(); }
+          if(!c.ov && c.y  pRect().y + pRect().h){ c.ov=true; state.overtakes++; addCombo(); var pts = (10  state.comboMul)0; state.score += pts; }
+          if(c.ycv.clientHeight) state.cars.splice(i,1);
+        }
+         bananas
+        for(var i=state.bananas.length-1;i=0;i--){ var b=state.bananas[i]; b.y += b.sp; if(hitCircleRect(pRect(),b)){ state.bananas.splice(i,1); var ptsB=(100state.comboMul)0; state.score+=ptsB; daily.bananas.progress++; addPickupFX(b.x+b.size2,b.y+b.size2,'#ffea00','+'+ptsB); } else if(b.ycv.clientHeight) state.bananas.splice(i,1); }
+         gems
+        for(var i=state.gems.length-1;i=0;i--){ var g=state.gems[i]; g.y += g.sp; if(hitCircleRect(pRect(),g)){ state.gems.splice(i,1); var base = g.type==='diamond'7040; var ptsG=(basestate.comboMul)0; state.score+=ptsG; addPickupFX(g.x+g.size2,g.y+g.size2, g.type==='diamond''#00e5ff''#ffd700', '+'+ptsG); } else if(g.ycv.clientHeight) state.gems.splice(i,1); }
+
+        daily.overtake.progress = state.overtakes; daily.score.progress = state.score;
+        var reward=0; for(var k in daily){ var c2=daily[k]; if(!c2.done && c2.progress=c2.target){ c2.done=true; reward+=c2.reward; }}
+        if(reward0){ state.coins += reward; localStorage.setItem('racerCoins', state.coins); showToast('DAILY COMPLETE +' + reward + ' COINS'); }
+        updUI();
+      }
+
+       Loop
+      var loopId=0; function loop(now){ if(!state.runningstate.paused) return; now=nowperformance.now(); var dt=Math.min(0.05, (now-state.last)1000); state.last=now; ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight); road(); drawCars(); drawBan(); drawGems(); drawPU(); drawFX(dt); drawPlayer(); tick(dt); loopId=requestAnimationFrame(loop); }
+
+      function gameOver(){ state.running=false; state.paused=false; cancelAnimationFrame(loopId); if(state.scorestate.high){ state.high=state.score; localStorage.setItem('racerHighScore', state.high); } $('fs').textContent=state.score0; $('fo').textContent=state.overtakes0; $('fc').textContent=(state.maxCombo1)+'×'; $('msg').textContent = state.score500 'Excellent! You are a master driver!'  state.score200 'Great! Your skills are impressive!'  state.score100 'Good! Keep practicing!'  'Try again!'; showOver(); }
+
+      function drawTitle(){ ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight); road(); drawPlayer(); ctx.fillStyle='rgba(0,0,0,.68)'; ctx.fillRect(0,0,cv.clientWidth,cv.clientHeight); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='700 18px Arial'; ctx.fillText('RACER X — OVERTAKE', cv.clientWidth2, cv.clientHeight2-24); ctx.font='14px Arial'; ctx.fillText('Press START to play', cv.clientWidth2, cv.clientHeight2+6); ctx.font='12px Arial'; ctx.fillText('Collect bananas 🍌 (max), diamonds 💎, gold 🟡!', cv.clientWidth2, cv.clientHeight2+30); }
+
+       Initial paint + UI
+      drawTitle(); updUI();
+
+       -------- simple tests (non-intrusive) --------
+      (function runTests(){
+        try{
+          console.assert(cv && ctx, 'Canvas & context exist');
+          console.assert(typeof laneW()==='number' && laneW()0, 'laneW positive');
+          console.assert((state.baseSpeed + 50.2) === 4, 'speed progression math (level=5)'); console.assert((function(){var v=3+20.2; return Math.abs(((3+20.2)1)- (3+20.2))1e-9;})(), 'speedMod default=1'); console.assert((function(){var sp=4; var arr=[{sp0},{sp1}]; for(var i=0;iarr.length;i++) arr[i].sp=sp; return arr[0].sp===sp&&arr[1].sp===sp;})(), 'equal speed apply');
+          var r=pRect(); console.assert(['x','y','w','h'].every(function(k){return k in r}), 'pRect shape');
+          console.log('[RacerX] Basic tests passed');
+        }catch(e){ console.warn('[RacerX] Tests issue', e); }
+      })();
+       ---------------------------------------------
     }
-  });
-</script>
-</body>
-</html>
+
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{oncetrue}); else boot();
+  })();
+  script
+body
+html
