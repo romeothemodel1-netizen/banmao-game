@@ -1,338 +1,473 @@
-!DOCTYPE html
-html lang=vi
-head
-  meta charset=utf-8 
-  meta name=viewport content=width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no 
-  titleRacer X — 5 Lane Racing (Mobile Optimized)title
-  meta name=theme-color content=#0b1220 
-  style
-    root{
-      --primary#3498db;--secondary#e74c3c;--accent#f1c40f;--dark#0b1220;--light#ecf0f1;--success#2ecc71;--road#2f3a4a;--lane#f1c40f;
-      --radius14px;--shadow0 10px 30px rgba(0,0,0,.45)
-    }
-    {box-sizingborder-box;-webkit-tap-highlight-colortransparent}
-    html,body{height100%}
-    body{margin0;font-familysystem-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;backgroundlinear-gradient(135deg,#172238,#681d26,#fdbb2d);colorvar(--light);displayflex;align-itemscenter;justify-contentcenter;padding12px;overflowhidden}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>Banmao X — 5 Lane Racing (Playable)</title>
+  <!-- Keep CSS in one well-formed tag; start with a comment to avoid edge parsers choking on :root -->
+  <style type="text/css">
+    /* Theme */
+    :root{--accent:#f1c40f;--primary:#3498db;--danger:#e74c3c}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%}
+    body{margin:0;background:#1b1f2a;color:#ecf0f1;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:12px}
+    .game{width:min(560px,100%);aspect-ratio:9/16;display:flex;flex-direction:column;gap:8px;background:#0d1117;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:10px;border:1px solid rgba(255,255,255,.07)}
+    .hdr{border-bottom:1px solid rgba(52,152,219,.5);padding-bottom:6px}
+    .hdr h1{margin:0;text-align:center;font-weight:900;letter-spacing:.12em;font-size:clamp(16px,3.5vw,22px)}
+    .stats{display:flex;gap:6px}
+    .stat{flex:1;text-align:center;background:rgba(255,255,255,.08);border-radius:8px;padding:6px}
+    .stat .t{opacity:.8;font-size:10px;letter-spacing:.08em}
+    .stat .v{font-weight:900;color:var(--accent)}
+    .stage{position:relative;flex:1;border-radius:10px;overflow:hidden;border:1.5px solid rgba(52,152,219,.6);background:#2f3a4a}
+    canvas{display:block;width:100%;height:100%;touch-action:none;background:#34495e}
+    .pwr{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:999px;display:none;gap:6px;align-items:center;font-weight:700}
+    .row{display:flex;gap:6px}
+    .btn{flex:1;border:0;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
+    .ok{background:#2ecc71;color:#fff}.pri{background:#3498db;color:#fff}.dan{background:#e74c3c;color:#fff}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+    .card{width:min(360px,92vw);background:#0009;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;text-align:center}
+    .card h2{margin:0 0 8px;color:var(--danger)}
+    .toast{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.7);color:#ffb000;padding:6px 10px;border-radius:999px;font-weight:800;display:none}
+    .splash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:20;flex-direction:column;gap:20px}
+    .splash img{width:50%;max-width:240px}
+    .splash h2{color:#fff;margin:0;font-size:18px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="game">
+    <div class="hdr">
+      <h1>BANMAO X</h1>
+      <div class="stats">
+        <div class="stat"><div class="t">SCORE</div><div class="v" id="s">0</div></div>
+        <div class="stat"><div class="t">OVERTAKES</div><div class="v" id="ot">0</div></div>
+        <div class="stat"><div class="t">COMBO</div><div class="v" id="cb">1×</div></div>
+      </div>
+    </div>
+    <div class="stage">
+      <canvas id="cv" aria-label="Racing canvas" role="img"></canvas>
+      <div class="pwr" id="pwr"><span id="pico">⚡</span><span id="pt">0s</span></div>
+      <div class="toast" id="toast">COMBO x1</div>
+      <div class="splash" id="splash">
+        <img src="https://banmao-proxy-clean.vercel.app/gm4.png" alt="Banmao car" />
+        <h2>Nhấn START để bắt đầu chơi</h2>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn ok" id="start">START</button>
+      <button class="btn pri" id="pause">PAUSE</button>
+      <button class="btn dan" id="restart">RESTART</button>
+    </div>
+  </div>
 
-    .game-shell{widthmin(560px,100%);aspect-ratio916;displayflex;flex-directioncolumn;gap8px;backgroundrgba(0,0,0,.7);border-radiusvar(--radius);box-shadowvar(--shadow);padding10px;border1px solid rgba(255,255,255,.07)}
-     FIX Replace unsupported color-mix with RGBA fallback 
-    .hdr{displaygrid;grid-template-columns1fr;gap6px;border-bottom1.5px solid rgba(52,152,219,.6);padding-bottom6px}
-    .hdr h1{margin0;text-aligncenter;letter-spacing.12em;font-weight800;font-sizeclamp(16px,3.5vw,22px)}
-    .stats{displayflex;gap6px;justify-contentspace-between}
-    .stat{flex1;min-width0;text-aligncenter;backgroundrgba(255,255,255,.08);border-radius8px;padding6px}
-    .stat .label{opacity.8;font-size10px;letter-spacing.08em}
-    .stat .val{font-weight800;font-sizeclamp(14px,4.5vw,18px);colorvar(--accent)}
+  <div class="overlay" id="over">
+    <div class="card">
+      <h2>GAME OVER!</h2>
+      <div style="display:flex;gap:10px;justify-content:space-between;margin:10px 0">
+        <div class="stat"><div class="t">SCORE</div><div class="v" id="fs">0</div></div>
+        <div class="stat"><div class="t">OVERTAKES</div><div class="v" id="fo">0</div></div>
+        <div class="stat"><div class="t">MAX COMBO</div><div class="v" id="fc">1×</div></div>
+      </div>
+      <button class="btn ok" id="again" style="width:100%;margin-bottom:8px">PLAY AGAIN</button>
+      <button class="btn pri" id="tw" style="width:100%">SHARE ON TWITTER</button>
+    </div>
+  </div>
 
-    .stage{positionrelative;flex1;border-radius10px;overflowhidden;border1.5px solid rgba(52,152,219,.6);backgroundvar(--road);min-height0}
-    canvas{displayblock;width100%;height100%;touch-actionnone}
+<script type="text/javascript">
+(function(){
+  // ====== DOM & CTX ======
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var stage = cv.parentElement;
+  var splash = document.getElementById('splash');
+  var over = document.getElementById('over');
+  var $ = function(id){ return document.getElementById(id); };
 
-    .row{displayflex;gap6px}
-    .btn{appearancenone;border0;border-radius10px;padding10px 12px;font-weight800;font-sizeclamp(12px,3.7vw,14px);letter-spacing.06em;cursorpointer;box-shadow0 3px 0 rgba(0,0,0,.35);transitiontransform .15s ease,filter .15s ease;flex1}
-    .btnactive{transformtranslateY(2px)}
-    .btn-primary{backgroundvar(--primary);color#fff}
-    .btn-danger{backgroundvar(--secondary);color#fff}
-    .btn-ok{backgroundvar(--success);color#fff}
-    .btn-twitter{background#1da1f2;color#fff}
+  // ====== IMAGE HELPERS (fix InvalidStateError) ======
+  function makeImg(srcs){
+    var img = new Image(); img.crossOrigin='anonymous';
+    var i = 0; var ready=false; var failed=false;
+    function tryNext(){ if(i>=srcs.length){ failed=true; return; } img.src = srcs[i++]; }
+    img.onload = function(){ ready = (img.naturalWidth>0 && img.naturalHeight>0); };
+    img.onerror = tryNext; // thử nguồn tiếp theo nếu lỗi
+    tryNext();
+    return {img:img, isReady:function(){ return ready && img.complete && img.naturalWidth>0; }, failed:function(){return failed;}};
+  }
+  function canDraw(image){ return !!(image && image.complete && image.naturalWidth>0 && image.naturalHeight>0); }
+  function drawImageSafe(image,x,y,w,h){
+    if(!canDraw(image)) return false;
+    try{ ctx.drawImage(image,x,y,w,h); return true; }catch(e){ /* tránh crash nếu state=broken */ return false; }
+  }
 
-    .lane-ind{displayflex;justify-contentcenter;gap6px}
-    .lane-badge{width28px;height28px;border-radius999px;backgroundrgba(255,255,255,.1);displaygrid;place-itemscenter;font-weight700;font-size12px;border2px solid transparent}
-    .lane-badge.active{backgroundvar(--accent);color#1b1b1b;border-colorvar(--primary)}
+  // ====== ASSETS ======
+  var carA = makeImg(['https://banmao-proxy-clean.vercel.app/gm4.png']);
+  var obs1A = makeImg(['https://banmao-proxy-clean.vercel.app/gm2.png']);
+  var obs2A = makeImg(['https://banmao-proxy-clean.vercel.app/gm3.png']);
+  var banA  = makeImg(['https://banmao-proxy-clean.vercel.app/bm9.png']);
+  // logo OKX: có thể bị chặn, chuẩn bị fallback vẽ vector
+  var okxA  = makeImg([
+    'https://seeklogo.com/images/O/okx-logo-1E0A4DFF74-seeklogo.com.png',
+    'https://upload.wikimedia.org/wikipedia/commons/7/75/OKX_Logo.png'
+  ]);
+  var imgCar = carA.img, imgObs1 = obs1A.img, imgObs2 = obs2A.img, imgBan = banA.img, imgOkx = okxA.img;
 
-    .level{margin-top4px;text-aligncenter;font-size12px;colorvar(--accent)}
-    .bar{height6px;backgroundrgba(255,255,255,.18);border-radius99px;overflowhidden}
-    .fill{height100%;width0;backgroundvar(--accent);transitionwidth .25s ease}
+  // ====== CANVAS FIT (HiDPI) ======
+  function fit(){
+    var dpr = window.devicePixelRatio||1;
+    var w = stage.clientWidth, h = stage.clientHeight;
+    cv.width = Math.max(1, Math.floor(w*dpr));
+    cv.height = Math.max(1, Math.floor(h*dpr));
+    cv.style.width = w+'px';
+    cv.style.height = h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  if('ResizeObserver' in window){ new ResizeObserver(fit).observe(stage); } else window.addEventListener('resize',fit);
+  fit();
 
-    .mc{displayflex;gap10px;margin-top8px}
-    .mc .mkey{flex1;height56px;border2px solid var(--primary);border-radius12px;backgroundrgba(255,255,255,.14);font-weight900;font-size24px;displaygrid;place-itemscenter;-webkit-user-selectnone;user-selectnone}
-    .mkeyactive{backgroundrgba(255,255,255,.28)}
+  // ====== STATE ======
+  var LANES = 5;
+  var laneW = function(){ return stage.clientWidth / LANES; };
+  var state = {
+    running:false, paused:false, last:0,
+    score:0, overtakes:0, combo:0, maxCombo:0,
+    level:1, speed:3, maxSpeed:8, accel0:0.12, elapsed:0,
+    lane:2,
+    cars:[], bananas:[], gems:[],
+    spawnCar:0, spawnBan:0, spawnGem:0,
+    rateCar:2.0, // giảm 50% tần suất xe so với mặc định 1.0
+    rateBan:3.0, rateGem:4.0,
+    hit:false, hitTimer:0, flash:0, shake:0,
+    fx:[],
+    seeded:false, // đảm bảo có vật thể ngay khi START
+    frames:0      // đếm số frame để test
+  };
 
-    .toast{positionabsolute;left10px;top10px;backgroundrgba(0,0,0,.7);color#ffb000;padding6px 10px;border-radius999px;font-weight800;displaynone;z-index5}
-    .power{positionabsolute;right10px;top10px;backgroundrgba(0,0,0,.7);color#fff;padding6px 10px;border-radius999px;displaynone;gap6px;align-itemscenter;z-index5}
+  function ui(){ $('s').textContent = (state.score|0); $('ot').textContent = (state.overtakes|0); $('cb').textContent = (Math.max(1,state.combo))+'×'; }
 
-    .overlay{positionfixed; inset fallback top0;left0;right0;bottom0;backgroundrgba(0,0,0,.88);displaynone;align-itemscenter;justify-contentcenter;padding16px;z-index10}
-    .card{widthmin(360px,92vw);backgroundrgba(0,0,0,.85);border1px solid rgba(255,255,255,.08);border-radius14px;padding18px;box-shadowvar(--shadow);text-aligncenter}
-    .card h2{colorvar(--secondary);margin0 0 8px;font-sizeclamp(20px,5vw,26px)}
-    .grid{displayflex;gap10px;justify-contentspace-between;margin10px 0}
-    .gcol{flex1;backgroundrgba(255,255,255,.08);border-radius10px;padding8px}
-    .gcol .t{opacity.8;font-size12px}
-    .gcol .n{font-weight900;colorvar(--accent);font-size18px}
+  // ====== PLAYER ======
+  var player = {
+    w:function(){ return laneW()*0.6; },
+    h:function(){ return laneW()*0.6*1.4; },
+    y:function(){ return stage.clientHeight - laneW()*0.6*1.6; }
+  };
+  function pRect(){ return { x: state.lane*laneW() + (laneW()-player.w())/2, y: player.y(), w: player.w(), h: player.h() }; }
 
-    .daily{backgroundrgba(255,215,0,.12);border1px solid gold;border-radius10px;padding8px;margin-top6px}
-    .daily .t{colorgold;font-weight800;font-size12px}
+  // ====== INPUT ======
+  var touchStartX=0;
+  cv.addEventListener('pointerdown',function(e){ touchStartX = e.clientX; if(cv.setPointerCapture){ cv.setPointerCapture(e.pointerId); } ensureAudio(); });
+  cv.addEventListener('pointerup',function(e){ var dx = e.clientX - touchStartX; if(Math.abs(dx) < 24){ var mid = stage.getBoundingClientRect().left + stage.clientWidth/2; if(e.clientX < mid) left(); else right(); } else { if(dx>0) right(); else left(); } });
+  document.addEventListener('keydown',function(e){ if(!state.running||state.paused) return; if(e.key==='ArrowLeft') left(); else if(e.key==='ArrowRight') right(); else if(e.key==='Escape') togglePause(); });
+  function left(){ state.lane = Math.max(0, state.lane-1); }
+  function right(){ state.lane = Math.min(LANES-1, state.lane+1); }
 
-    @media (orientationlandscape) and (max-height520px){
-      body{padding8px}
-      .game-shell{flex-directionrow;gap10px;aspect-ratioauto;height96vh;widthmin(1000px,100%)}
-      .mc{displaynone}
-    }
-  style
-head
-body
-  div class=game-shell id=sh
-    div class=hdr
-      h1RACER Xh1
-      div class=stats role=status aria-live=polite
-        div class=statdiv class=labelSCOREdivdiv class=val id=s0divdiv
-        div class=statdiv class=labelOVERTAKESdivdiv class=val id=ot0divdiv
-        div class=statdiv class=labelCOMBOdivdiv class=val id=cb1×divdiv
-      div
-    div
+  // ====== BUTTONS ======
+  $('start').onclick = function(){ ensureAudio(); start(); };
+  $('start').addEventListener('click', function(){ ensureAudio(); start(); });
+  $('again').onclick = function(){ ensureAudio(); start(); };
+  $('restart').onclick = function(){ cancelAnimationFrame(loopId); state.running=false; ensureAudio(); start(); };
+  $('pause').onclick = togglePause;
+  $('tw').onclick = function(){ var t = 'Banmao X! I scored '+(state.score|0); var u='http://banmao.meme'; var url = 'https://twitter.com/intent/tweet?text='+encodeURIComponent(t)+'&url='+encodeURIComponent(u); window.open(url,'_blank','width=560,height=420'); };
 
-    div class=stage id=stage
-      canvas id=cv aria-label=Racing canvas role=imgcanvas
-      div class=toast id=toastCOMBO x1div
-      div class=power id=pwrspan id=pico⚡spanspan id=pt0sspandiv
-    div
+  function togglePause(){ if(!state.running) return; state.paused=!state.paused; $('pause').textContent = state.paused?'RESUME':'PAUSE'; if(!state.paused){ state.last=performance.now(); cancelAnimationFrame(loopId); state.frames++; loopId=requestAnimationFrame(loop); } }
+  function reset(){
+    state.score=0; state.overtakes=0; state.combo=0; state.maxCombo=0;
+    state.level=1; state.speed=3; state.elapsed=0; state.lane=2;
+    state.cars.length=0; state.bananas.length=0; state.gems.length=0;
+    state.spawnCar=0; state.spawnBan=0; state.spawnGem=0;
+    state.hit=false; state.hitTimer=0; state.flash=0; state.shake=0; state.fx.length=0;
+    state.seeded=false; state.frames=0; ui();
+  }
+  function start(){
+    splash.style.display='none'; over.style.display='none';
+    reset(); seedInitial();
+    state.running=true; state.paused=false; $('pause').textContent='PAUSE';
+    state.last=performance.now();
+    cancelAnimationFrame(loopId);
+    // gọi loop ngay lập tức + rAF để tránh môi trường chặn khung đầu
+    loop(state.last);
+    state.frames++;
+    loopId=requestAnimationFrame(loop);
+  }
 
-    div class=levelLevel span id=lv1span · Speed span id=spd3span · High span id=hs0spandiv
-    div class=bardiv class=fill id=pfdivdiv
+  // ====== DRAW ======
+  function drawOKXVector(x,y,w,h,alpha){
+    // Vẽ chữ OKX theo dạng lưới ô vuông (gần giống logo bạn gửi)
+    // - "O": hình vuông đặc có lỗ trống giữa
+    // - "K": ma trận 3x3 các ô tạo thành chữ K khối
+    // - "X": ma trận 3x3 các ô tạo thành chữ X
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    var totalW = w, totalH = h;
+    var unit = Math.min(totalH*0.9, totalW*0.9); // giới hạn bên trong
+    var scale = unit/3; // mỗi ô là scale x scale
+    var gap = scale*0.25; // khoảng cách giữa các ô trong cùng một chữ
 
-    div class=lane-ind aria-hidden=true
-      div class=lane-badge id=L01div
-      div class=lane-badge id=L12div
-      div class=lane-badge id=L23div
-      div class=lane-badge id=L34div
-      div class=lane-badge id=L45div
-    div
+    // Bố cục: 3 chữ, có khoảng cách giữa chữ
+    var letterGap = scale*0.9;
+    var oW = scale*3, kW = scale*3, xW = scale*3;
+    var fullW = oW + letterGap + kW + letterGap + xW;
+    var startX = x + (w - fullW)/2;
+    var baseY  = y + (h - scale*3)/2;
 
-    div class=mc id=mc
-      div class=mkey id=left←div
-      div class=mkey id=right→div
-    div
-
-    div class=row
-      button class=btn btn-ok id=startSTARTbutton
-      button class=btn btn-primary id=pausePAUSEbutton
-      button class=btn btn-danger id=restartRESTARTbutton
-    div
-
-    div class=daily
-      div class=tDAILY CHALLENGEdiv
-      div id=dtextOvertake 15 carsdiv
-      div class=bar style=margin-top6pxdiv class=fill id=dprogdivdiv
-      div style=text-aligncenter;colorgold;font-size12px;margin-top6pxReward 50 coinsdiv
-    div
-  div
-
-  div class=overlay id=over
-    div class=card role=dialog aria-modal=true aria-labelledby=ovh
-      h2 id=ovhGAME OVER!h2
-      div class=grid
-        div class=gcoldiv class=tSCOREdivdiv class=n id=fs0divdiv
-        div class=gcoldiv class=tOVERTAKESdivdiv class=n id=fo0divdiv
-        div class=gcoldiv class=tMAX COMBOdivdiv class=n id=fc1×divdiv
-      div
-      p id=msg style=margin6px 0 12pxTry again!p
-      button class=btn btn-ok id=again style=width100%;margin-bottom8pxPLAY AGAINbutton
-      button class=btn btn-twitter id=tw style=width100%SHARE ON TWITTERbutton
-    div
-  div
-
-  script
-   --- boot after DOM ready (prevents getContext null) ---
-  (function(){
-    function boot(){
-      const cv=document.getElementById('cv')document.getElementById('game-canvas');
-      const stage=document.getElementById('stage')(cvcv.parentElementnull);
-      if(!cv!stage){ console.error('DOM not ready missing #cv or #stage'); return; }
-      var ctx=cv.getContext('2d',{desynchronizedtrue})cv.getContext('2d');
-      if(!ctx){ console.error('Canvas context init failed'); return; }
-      ctx.imageSmoothingEnabled=false;
-
-       DPR-aware canvas sizing
-      function fit(){
-        var dpr=window.devicePixelRatio1;
-        var w=stage.clientWidth,h=stage.clientHeight;
-        cv.width=Math.max(1,Math.floor(wdpr));
-        cv.height=Math.max(1,Math.floor(hdpr));
-        cv.style.width=w+'px';cv.style.height=h+'px';
-        ctx.setTransform(dpr,0,0,dpr,0,0);
-      }
-      if('ResizeObserver' in window){ new ResizeObserver(fit).observe(stage); } else { window.addEventListener('resize',fit); setTimeout(fit,0); }
-      fit();
-      document.getElementById('pwr').style.display='none';
-
-       Assets
-      var imgCar=new Image(); imgCar.src='httpsbanmao-proxy-clean.vercel.appbm3.png';
-      var imgBan=new Image(); imgBan.src='httpsbanmao-proxy-clean.vercel.appbm9.png';
-      imgCar.decoding='async'; imgBan.decoding='async';
-
-      var laneCount=5; var laneW=function(){return stage.clientWidthlaneCount};
-      var clamp=function(v,min,max){return vminminvmaxmaxv};
-
-       State
-      var state={runningfalse,pausedfalse,t0,last0,score0,overtakes0,combo1,maxCombo1,comboMul1,level1,baseSpeed3,speed3,lane2,cars[],bananas[],gems[],pUs[],spawn{cars0,bananas0,gems0,pups0},rates{cars1.5,bananas3,gems4,pups8},powernull,pTime0,highNumber(localStorage.getItem('racerHighScore')0),coinsNumber(localStorage.getItem('racerCoins')0)}; var speedMod=1; var fx=[];
-      var daily={overtake{target15,progress0,donefalse,reward50},bananas{target5,progress0,donefalse,reward30},score{target300,progress0,donefalse,reward40}};
-
-      function $(id){return document.getElementById(id)}
-      function updUI(){
-        $('s').textContent=state.score0; $('ot').textContent=state.overtakes0; $('cb').textContent=state.comboMul+'×';
-        $('lv').textContent=state.level; $('spd').textContent=Math.round(state.speed10)10; $('hs').textContent=state.high;
-        $('pf').style.width=((state.score%100))+'%';
-        for(var i=0;ilaneCount;i++) $('L'+i).classList.toggle('active', i===state.lane);
-        var ch=daily.overtake; $('dtext').textContent='Overtake '+ch.target+' cars'; $('dprog').style.width=Math.min(100,(ch.progressch.target)100)+'%';
-      }
-
-       Player
-      var player={wfunction(){return Math.min(cv.clientWidth.15,50)},hfunction(){return Math.min(cv.clientHeight.12,70)},yfunction(){return cv.clientHeight.85}};
-      function pRect(){return {x state.lanelaneW()+ (laneW()-player.w())2, y player.y(), w player.w(), h player.h()};}
-
-       Input
-      function goLane(l){ state.lane=clamp(l,0,laneCount-1); updUI(); }
-      function left(){ goLane(state.lane-1); }
-      function right(){ goLane(state.lane+1); }
-      document.addEventListener('keydown',function(e){ if(!state.runningstate.paused) return; if(e.key==='ArrowLeft') left(); else if(e.key==='ArrowRight') right(); else if(e.key==='Escape') togglePause(); });
-      var sx=0; cv.addEventListener('pointerdown',function(e){ if(!state.runningstate.paused) return; sx=e.clientX; cv.setPointerCapture(e.pointerId); },{passivetrue});
-      cv.addEventListener('pointerup',function(e){ if(!state.runningstate.paused) return; var dx=e.clientX-sx; if(Math.abs(dx)24) (dx0)right()left(); },{passivetrue});
-      $('left').addEventListener('pointerdown',function(e){e.preventDefault(); if(state.running&&!state.paused) left();});
-      $('right').addEventListener('pointerdown',function(e){e.preventDefault(); if(state.running&&!state.paused) right();});
-
-       Controls
-      $('start').onclick=function(){start()}; $('again').onclick=function(){start()};
-      $('restart').onclick=function(){reset()}; $('pause').onclick=function(){togglePause()}; $('tw').onclick=function(){shareTw()};
-
-      function start(){ if(loopId) cancelAnimationFrame(loopId); hideOver();
-        Object.assign(state,{runningtrue,pausedfalse,t0,lastperformance.now(),score0,overtakes0,combo1,maxCombo1,comboMul1,level1,baseSpeed3,speed3,lane2,cars[],bananas[],gems[],pUs[],spawn{cars0,bananas0,gems0,pups0},powernull,pTime0});
-        goLane(2); updUI(); loop(); }
-      function reset(){ if(loopId) cancelAnimationFrame(loopId); state.running=false; state.paused=false; start(); }
-      function togglePause(){ if(!state.running) return; state.paused=!state.paused; $('pause').textContent=state.paused'RESUME''PAUSE'; if(!state.paused) { state.last=performance.now(); loop(); } }
-      function shareTw(){ var t='Banmao The Purr‑fect Meme coin! I scored '+(state.score0)+' in Racer X!'; var u='httpbanmao.meme'; var url='httpstwitter.comintenttweettext='+encodeURIComponent(t)+'&url='+encodeURIComponent(u); window.open(url,'_blank','width=560,height=420'); }
-      function showOver(){ $('over').style.display='flex'; }
-      function hideOver(){ $('over').style.display='none'; }
-
-       Spawners
-      function spawn(dt){
-        state.spawn.cars += dt; state.spawn.bananas += dt; state.spawn.gems += dt; state.spawn.pups += dt;
-        var carRate = Math.max(.6, state.rates.cars - state.level0.12);
-        if(state.spawn.cars = carRate){ state.spawn.cars = 0; spawnCars(); }
-        if(state.spawn.bananas = state.rates.bananas){ state.spawn.bananas = 0; spawnBanana(); }
-        if(state.spawn.gems = state.rates.gems){ state.spawn.gems = 0; spawnGem(); }
-        if(state.spawn.pups = state.rates.pups){ state.spawn.pups = 0; if(Math.random()  .35) spawnPower(); }
-      }
-      function spawnCars(){
-        var count = state.level=6  3  state.level=3  2  1;
-        var free = [0,1,2,3,4];
-        for(var i=0;icount && free.length;i++){
-          var k=(Math.random()free.length)0; var lane=free.splice(k,1)[0];
-          var w=Math.min(cv.clientWidth.15,50), h=Math.min(cv.clientHeight.12,70);
-          var x = lanelaneW() + (laneW()-w)2;
-          state.cars.push({xx,y-h,ww,hh,spstate.speed,ovfalse,lanelane,colorrandColor()});
-        }
-        function randColor(){ var c=['#e74c3c','#9b59b6','#1abc9c','#f39c12','#d35400','#16a085']; return c[(Math.random()c.length)0]; }
-      }
-      function spawnBanana(){
-        var lane=(Math.random()laneCount)0; var size=Math.min(cv.clientWidth.08,30);
-        var x=lanelaneW()+(laneW()-size)2; state.bananas.push({xx,y-size,sizesize,spstate.speed});
-      }
-      function spawnGem(){
-        var lane=(Math.random()laneCount)0; var size=Math.min(cv.clientWidth.085,28);
-        var x=lanelaneW()+(laneW()-size)2; var type=Math.random().55'diamond''gold';
-        state.gems.push({xx,y-size,sizesize,spstate.speed,typetype});
-      }
-      function spawnPower(){
-        var lane=(Math.random()laneCount)0; var size=Math.min(cv.clientWidth.08,30);
-        var x=lanelaneW()+(laneW()-size)2; var types=['shield','magnet','slow','boost'];
-        var type=types[(Math.random()types.length)0];
-        state.pUs.push({xx,y-size,sizesize,spstate.speed,typetype});
-      }
-
-       Draw
-      function road(){ var w=cv.clientWidth,h=cv.clientHeight; var laneColor=getComputedStyle(document.documentElement).getPropertyValue('--lane')'#f1c40f'; ctx.fillStyle='#34495e'; ctx.fillRect(0,0,w,h); ctx.fillStyle=laneColor; for(var i=1;ilaneCount;i++){ var x=ilaneW(); for(var y=0;yh;y+=40) ctx.fillRect(x-2,y,4,20); } ctx.fillStyle='#7f8c8d'; ctx.fillRect(0,0,12,h); ctx.fillRect(w-12,0,12,h); }
-      function drawPlayer(){ var r=pRect(); if(imgCar.complete) ctx.drawImage(imgCar,r.x,r.y,r.w,r.h); else{ ctx.fillStyle='#3498db'; ctx.fillRect(r.x,r.y,r.w,r.h);} if(state.power){ ctx.strokeStyle=powColor(state.power); ctx.lineWidth=3; ctx.beginPath(); ctx.arc(r.x+r.w2,r.y+r.h2, Math.max(r.w,r.h)2+5,0,Math.PI2); ctx.stroke();}}
-      function drawCars(){ for(var i=0;istate.cars.length;i++){ var c=state.cars[i]; ctx.fillStyle=c.color; ctx.fillRect(c.x,c.y,c.w,c.h); ctx.fillStyle='#aed6f1'; ctx.fillRect(c.x+5,c.y+10,c.w-10,20);} }
-      function drawBan(){ for(var i=0;istate.bananas.length;i++){ var b=state.bananas[i]; if(imgBan.complete) ctx.drawImage(imgBan,b.x,b.y,b.size,b.size); else { ctx.fillStyle='#f1c40f'; ctx.beginPath(); ctx.ellipse(b.x+b.size2,b.y+b.size2,b.size2,b.size3,0,0,Math.PI2); ctx.fill(); } } }
-      function drawGems(){ for(var i=0;istate.gems.length;i++){ var g=state.gems[i]; if(g.type==='gold'){ ctx.beginPath(); ctx.arc(g.x+g.size2,g.y+g.size2,g.size2,0,Math.PI2); ctx.fillStyle='#ffd700'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#e6b800'; ctx.stroke(); ctx.beginPath(); ctx.arc(g.x+g.size2,g.y+g.size2,g.size3,0,Math.PI2); ctx.stroke(); } else { var cx=g.x+g.size2, cy=g.y+g.size2, s=g.size2; ctx.beginPath(); ctx.moveTo(cx,cy-s); ctx.lineTo(cx+s,cy); ctx.lineTo(cx,cy+s); ctx.lineTo(cx-s,cy); ctx.closePath(); ctx.fillStyle='#00e5ff'; ctx.fill(); ctx.strokeStyle='#00b3cc'; ctx.lineWidth=2; ctx.stroke(); } } }
-      function drawPU(){ for(var i=0;istate.pUs.length;i++){ var p=state.pUs[i]; ctx.fillStyle=powColor(p.type); ctx.beginPath(); ctx.arc(p.x+p.size2,p.y+p.size2,p.size2,0,Math.PI2); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(powIcon(p.type), p.x+p.size2, p.y+p.size2); } }
-
-      function powColor(t){return t==='shield''#3498db't==='magnet''#e74c3c't==='slow''#9b59b6't==='boost''#f1c40f''#fff'}
-      function powIcon(t){return t==='shield''🛡️'t==='magnet''🧲't==='slow''🐌''⚡'}
-
-       Pickup FX
-      function addPickupFX(x,y,color,text){
-         floating text
-        fx.push({type'text',xx,yy,vy-0.8,life0.8,alpha1,txttext,colorcolor,scale1});
-         spark particles
-        var n=12; for(var i=0;in;i++){ var a=(Math.PI2)in; var sp=2+Math.random()1.5; fx.push({type'p',xx,yy,vxMath.cos(a)sp,vyMath.sin(a)sp,life0.6+Math.random()0.3,alpha1,colorcolor}); }
-        if('vibrate' in navigator) try{navigator.vibrate(20);}catch(e){}
-      }
-      function drawFX(dt){
-        for(var i=fx.length-1;i=0;i--){ var f=fx[i]; f.life-=dt; if(f.life=0){ fx.splice(i,1); continue; }
-          var a=Math.max(0,f.life(f.maxLife1));
-          if(f.type==='p'){ f.x+=f.vx; f.y+=f.vy; f.vx=0.96; f.vy=0.96; ctx.globalAlpha=f.life; ctx.fillStyle=f.color; ctx.beginPath(); ctx.arc(f.x,f.y,2,0,Math.PI2); ctx.fill(); ctx.globalAlpha=1; }
-          else if(f.type==='text'){ f.y+=f.vy; f.alpha=f.life0.8; ctx.save(); ctx.globalAlpha=f.alpha; ctx.fillStyle=f.color; ctx.font='bold 16px Arial'; ctx.textAlign='center'; ctx.fillText(f.txt, f.x, f.y); ctx.restore(); }
-        }
-      }
-
-       Collisions
-      function hit(r1,r2){ return r1.x  r2.x + r2.w - 8 && r1.x + r1.w - 8  r2.x && r1.y  r2.y + r2.h - 15 && r1.y + r1.h - 15  r2.y; }
-      function hitCircleRect(rect,c){ var cx=c.x+c.size2, cy=c.y+c.size2, cr=c.size2; var nx=Math.max(rect.x, Math.min(cx, rect.x+rect.w)); var ny=Math.max(rect.y, Math.min(cy, rect.y+rect.h)); var dx=cx-nx, dy=cy-ny; return dxdx+dydy  crcr; }
-
-      function activate(t){
-        state.power=t; state.pTime=10;
-        $('pico').textContent=powIcon(t); $('pt').textContent=Math.ceil(state.pTime)+'s';
-        $('pwr').style.display='flex';
-        if(t==='slow') speedMod=0.5; else if(t==='boost') speedMod=1.5; else speedMod=1;
-      }
-      function deactivate(){
-        speedMod=1; state.power=null; $('pwr').style.display='none';
-      }
-      
-
-      var comboTO=null; function addCombo(){ state.combo++; if(state.combostate.maxCombo) state.maxCombo=state.combo; state.comboMul=Math.min(5, ((state.combo3)0)+1); showToast('COMBO x'+state.comboMul); clearTimeout(comboTO); comboTO=setTimeout(function(){ state.combo=1; state.comboMul=1; $('toast').style.display='none'; }, 3000); }
-      function showToast(t){ $('toast').textContent=t; $('toast').style.display='block'; }
-
-      function tick(dt){
-        state.t+=dt; if(state.power){ state.pTime-=dt; $('pt').textContent=Math.ceil(state.pTime)+'s'; if(state.pTime=0) deactivate(); }
-        state.level = Math.floor(state.score100)+1;  level theo điểm
-        state.speed = (state.baseSpeed + state.level0.2)  speedMod;  tăng đều 0.2 mỗi level, áp dụng power
-        spawn(dt);
-         enforce equal speeds
-        for(var i=0;istate.cars.length;i++) state.cars[i].sp = state.speed;
-        for(var i2=0;i2state.bananas.length;i2++) state.bananas[i2].sp = state.speed;
-        for(var i3=0;i3state.gems.length;i3++) state.gems[i3].sp = state.speed;
-        for(var i4=0;i4state.pUs.length;i4++) state.pUs[i4].sp = state.speed;
-
-         cars
-        for(var i=state.cars.length-1;i=0;i--){ var c=state.cars[i]; c.y += c.sp; if(hit(pRect(),{xc.x,yc.y,wc.w,hc.h})){ if(state.power==='shield'){ state.cars.splice(i,1); continue; } return gameOver(); }
-          if(!c.ov && c.y  pRect().y + pRect().h){ c.ov=true; state.overtakes++; addCombo(); var pts = (10  state.comboMul)0; state.score += pts; }
-          if(c.ycv.clientHeight) state.cars.splice(i,1);
-        }
-         bananas
-        for(var i=state.bananas.length-1;i=0;i--){ var b=state.bananas[i]; b.y += b.sp; if(hitCircleRect(pRect(),b)){ state.bananas.splice(i,1); var ptsB=(100state.comboMul)0; state.score+=ptsB; daily.bananas.progress++; addPickupFX(b.x+b.size2,b.y+b.size2,'#ffea00','+'+ptsB); } else if(b.ycv.clientHeight) state.bananas.splice(i,1); }
-         gems
-        for(var i=state.gems.length-1;i=0;i--){ var g=state.gems[i]; g.y += g.sp; if(hitCircleRect(pRect(),g)){ state.gems.splice(i,1); var base = g.type==='diamond'7040; var ptsG=(basestate.comboMul)0; state.score+=ptsG; addPickupFX(g.x+g.size2,g.y+g.size2, g.type==='diamond''#00e5ff''#ffd700', '+'+ptsG); } else if(g.ycv.clientHeight) state.gems.splice(i,1); }
-
-        daily.overtake.progress = state.overtakes; daily.score.progress = state.score;
-        var reward=0; for(var k in daily){ var c2=daily[k]; if(!c2.done && c2.progress=c2.target){ c2.done=true; reward+=c2.reward; }}
-        if(reward0){ state.coins += reward; localStorage.setItem('racerCoins', state.coins); showToast('DAILY COMPLETE +' + reward + ' COINS'); }
-        updUI();
-      }
-
-       Loop
-      var loopId=0; function loop(now){ if(!state.runningstate.paused) return; now=nowperformance.now(); var dt=Math.min(0.05, (now-state.last)1000); state.last=now; ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight); road(); drawCars(); drawBan(); drawGems(); drawPU(); drawFX(dt); drawPlayer(); tick(dt); loopId=requestAnimationFrame(loop); }
-
-      function gameOver(){ state.running=false; state.paused=false; cancelAnimationFrame(loopId); if(state.scorestate.high){ state.high=state.score; localStorage.setItem('racerHighScore', state.high); } $('fs').textContent=state.score0; $('fo').textContent=state.overtakes0; $('fc').textContent=(state.maxCombo1)+'×'; $('msg').textContent = state.score500 'Excellent! You are a master driver!'  state.score200 'Great! Your skills are impressive!'  state.score100 'Good! Keep practicing!'  'Try again!'; showOver(); }
-
-      function drawTitle(){ ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight); road(); drawPlayer(); ctx.fillStyle='rgba(0,0,0,.68)'; ctx.fillRect(0,0,cv.clientWidth,cv.clientHeight); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='700 18px Arial'; ctx.fillText('RACER X — OVERTAKE', cv.clientWidth2, cv.clientHeight2-24); ctx.font='14px Arial'; ctx.fillText('Press START to play', cv.clientWidth2, cv.clientHeight2+6); ctx.font='12px Arial'; ctx.fillText('Collect bananas 🍌 (max), diamonds 💎, gold 🟡!', cv.clientWidth2, cv.clientHeight2+30); }
-
-       Initial paint + UI
-      drawTitle(); updUI();
-
-       -------- simple tests (non-intrusive) --------
-      (function runTests(){
-        try{
-          console.assert(cv && ctx, 'Canvas & context exist');
-          console.assert(typeof laneW()==='number' && laneW()0, 'laneW positive');
-          console.assert((state.baseSpeed + 50.2) === 4, 'speed progression math (level=5)'); console.assert((function(){var v=3+20.2; return Math.abs(((3+20.2)1)- (3+20.2))1e-9;})(), 'speedMod default=1'); console.assert((function(){var sp=4; var arr=[{sp0},{sp1}]; for(var i=0;iarr.length;i++) arr[i].sp=sp; return arr[0].sp===sp&&arr[1].sp===sp;})(), 'equal speed apply');
-          var r=pRect(); console.assert(['x','y','w','h'].every(function(k){return k in r}), 'pRect shape');
-          console.log('[RacerX] Basic tests passed');
-        }catch(e){ console.warn('[RacerX] Tests issue', e); }
-      })();
-       ---------------------------------------------
+    // Helper: vẽ 1 ô
+    function box(ix, iy, lx, ly){
+      ctx.fillRect(lx + ix*(scale+gap), ly + iy*(scale+gap), scale, scale);
     }
 
-    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{oncetrue}); else boot();
-  })();
-  script
-body
-html
+    // ---- O (khối vuông đặc có lỗ giữa) ----
+    var ox = startX, oy = baseY;
+    ctx.fillStyle = '#000';
+    // khung ngoài 3x3
+    for(var j=0;j<3;j++) for(var i=0;i<3;i++) box(i,j,ox,oy);
+    // khoét lỗ giữa
+    ctx.clearRect(ox + (scale+gap) + gap*0.5, oy + (scale+gap) + gap*0.5, scale-gap, scale-gap);
+
+    // ---- K (ma trận 3x3) ----
+    var kx = ox + oW + letterGap, ky = baseY;
+    var K = [
+      [1,0,1],
+      [1,1,0],
+      [1,0,1]
+    ];
+    ctx.fillStyle = '#000';
+    for(var r=0;r<3;r++) for(var c=0;c<3;c++) if(K[r][c]) box(c,r,kx,ky);
+
+    // ---- X (ma trận 3x3) ----
+    var xx = kx + kW + letterGap, xy = baseY;
+    var X = [
+      [1,0,1],
+      [0,1,0],
+      [1,0,1]
+    ];
+    for(var r2=0;r2<3;r2++) for(var c2=0;c2<3;c2++) if(X[r2][c2]) box(c2,r2,xx,xy);
+
+    ctx.restore();
+  }
+  function road(){
+    var w=stage.clientWidth, h=stage.clientHeight;
+    ctx.fillStyle='#34495e'; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#f1c40f';
+    for(var i=1;i<LANES;i++){
+      var x=i*laneW();
+      for(var y=0;y<h;y+=40){ ctx.fillRect(x-2,y,4,20); }
+    }
+    ctx.fillStyle='#7f8c8d';
+    ctx.fillRect(0,0,12,h);
+    ctx.fillRect(w-12,0,12,h);
+
+    // Logo OKX giữa đường, mờ dần khi xe tới gần
+    var logoW = laneW()*1.8;
+    var logoH = logoW*0.7;
+    var logoX = (w-logoW)/2;
+    var logoY = h/2 - logoH/2;
+    var pr = pRect();
+    var dy = Math.abs((pr.y+pr.h/2) - (logoY+logoH/2));
+    var alpha = Math.max(0.05, Math.min(0.18, dy/420));
+    if(!drawImageSafe(imgOkx, logoX, logoY, logoW, logoH)){
+      drawOKXVector(logoX, logoY, logoW, logoH, alpha);
+    }
+  }
+  function drawPlayer(){ var r=pRect(); if(!drawImageSafe(imgCar,r.x,r.y,r.w,r.h)){ ctx.fillStyle='#3498db'; ctx.fillRect(r.x,r.y,r.w,r.h);} }
+  function drawCars(){ for(var i=0;i<state.cars.length;i++){ var c=state.cars[i]; if(!drawImageSafe(c.img,c.x,c.y,c.w,c.h)){ ctx.fillStyle='#e74c3c'; ctx.fillRect(c.x,c.y,c.w,c.h);} } }
+  function drawBan(){ for(var i=0;i<state.bananas.length;i++){ var b=state.bananas[i]; if(!drawImageSafe(imgBan,b.x,b.y,b.size,b.size)){ ctx.fillStyle='#f1c40f'; ctx.beginPath(); ctx.arc(b.x+b.size/2,b.y+b.size/2,b.size/2,0,Math.PI*2); ctx.fill(); } } }
+  function drawGems(){ for(var i=0;i<state.gems.length;i++){ var g=state.gems[i]; if(g.type==='gold'){ ctx.beginPath(); var cx=g.x+g.size/2, cy=g.y+g.size/2; ctx.arc(cx,cy,g.size/2,0,Math.PI*2); ctx.fillStyle='#ffd700'; ctx.fill(); ctx.strokeStyle='#e6b800'; ctx.lineWidth=2; ctx.stroke(); } else { var cx2=g.x+g.size/2, cy2=g.y+g.size/2, s=g.size/2; ctx.beginPath(); ctx.moveTo(cx2,cy2-s); ctx.lineTo(cx2+s,cy2); ctx.lineTo(cx2,cy2+s); ctx.lineTo(cx2-s,cy2); ctx.closePath(); ctx.fillStyle='#00e5ff'; ctx.fill(); ctx.strokeStyle='#00b3cc'; ctx.lineWidth=2; ctx.stroke(); } } }
+
+  // ====== FX ======
+  function addPickupFX(x,y,color,text){ state.fx.push({type:'text', x:x, y:y, vy:-0.8, life:0.8, alpha:1, color:color, text:text}); var n=12; for(var i=0;i<n;i++){ var a=(Math.PI*2)*i/n; var sp=2+Math.random()*1.5; state.fx.push({type:'p',x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.3,alpha:1,color:color}); } }
+  function drawFX(dt){ for(var i=state.fx.length-1;i>=0;i--){ var f=state.fx[i]; f.life-=dt; if(f.life<=0){ state.fx.splice(i,1); continue; } if(f.type==='p'){ f.x+=f.vx; f.y+=f.vy; f.vx*=0.96; f.vy*=0.96; ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.color; ctx.beginPath(); ctx.arc(f.x,f.y,2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; } else { f.y+=f.vy; ctx.globalAlpha=Math.max(0,f.life/0.8); ctx.fillStyle=f.color; ctx.font='bold 16px Arial'; ctx.textAlign='center'; ctx.fillText(f.text,f.x,f.y); ctx.globalAlpha=1; } } }
+
+  // ====== HELPERS ======
+  function hit(r1,r2){ return r1.x < r2.x + r2.w - 8 && r1.x + r1.w - 8 > r2.x && r1.y < r2.y + r2.h - 15 && r1.y + r1.h - 15 > r2.y; }
+  function hitCircleRect(rect, c){ var cx=c.x+c.size/2, cy=c.y+c.size/2, cr=c.size/2; var nx=Math.max(rect.x, Math.min(cx, rect.x+rect.w)); var ny=Math.max(rect.y, Math.min(cy, rect.y+rect.h)); var dx=cx-nx, dy=cy-ny; return dx*dx+dy*dy < cr*cr; }
+
+  // ====== SPAWN ======
+  function laneBlocked(lane, y, margin){ for(var i=0;i<state.cars.length;i++){ var c=state.cars[i]; if(c.lane===lane && Math.abs(c.y - y) < margin) return true; } return false; }
+
+  // Seed immediate gameplay
+  function seedInitial(){
+    if(state.seeded) return;
+    var lanes=[0,1,2,3,4];
+    var count = 2 + Math.floor(Math.random()*2); // 2 hoặc 3
+    var rowY = -player.h()*1.2;
+    for(var i=0;i<count && lanes.length;i++){
+      var idx = Math.floor(Math.random()*lanes.length);
+      var lane = lanes.splice(idx,1)[0];
+      var w=laneW()*0.58, h=w*1.4; var x=lane*laneW()+(laneW()-w)/2; var y=rowY;
+      var img = (Math.random()<0.5?imgObs1:imgObs2);
+      state.cars.push({x:x,y:y,w:w,h:h,img:img,lane:lane,ov:false});
+    }
+    // thả 1 chuối và 1 gem ở phía trước
+    var sizeB = laneW()*0.5; var laneB = Math.floor(Math.random()*LANES); var xB = laneB*laneW() + (laneW()-sizeB)/2; var yB = -sizeB*3.2; state.bananas.push({x:xB,y:yB,size:sizeB});
+    var sizeG = laneW()*0.48; var laneG = (laneB+2)%LANES; var xG = laneG*laneW() + (laneW()-sizeG)/2; var yG = -sizeG*5.0; var type = Math.random()<0.55?'diamond':'gold'; state.gems.push({x:xG,y:yG,size:sizeG,type:type});
+    state.seeded=true;
+  }
+
+  function spawn(dt){
+    state.spawnCar += dt; state.spawnBan += dt; state.spawnGem += dt;
+    var baseRate = Math.max(0.45, state.rateCar - state.level*0.12);
+    var earlyEase = state.elapsed < 10 ? (1.0 + 0.2*state.elapsed/10) : 1;
+    var rate = baseRate * earlyEase;
+
+    if(state.spawnCar >= rate){
+      state.spawnCar = 0;
+      var countRand = Math.random();
+      var count = state.level>=3 ? (countRand<0.6?3:2) : state.level>=2 ? (countRand<0.4?3:2) : (countRand<0.2?3:2);
+      var baseGap = pRect().h * 64.0;
+      var nearestTop = -1e9; for(var i1=0;i1<state.cars.length;i1++){ var c1=state.cars[i1]; if(c1.y < 0 && c1.y > nearestTop) nearestTop = c1.y; }
+      var rowY = - (player.h());
+      if(nearestTop > -1e9 && (nearestTop - rowY) < baseGap){ rowY = nearestTop - baseGap - player.h(); }
+      var free=[0,1,2,3,4];
+      var placed=0;
+      while(placed < count && free.length){
+        var lane = free.splice(Math.floor(Math.random()*free.length),1)[0];
+        var w=laneW()*0.58, h=w*1.4; var x=lane*laneW()+(laneW()-w)/2; var y=rowY;
+        var img = (Math.random()<0.5?imgObs1:imgObs2);
+        var sameRow=0; for(var i2=0;i2<state.cars.length;i2++){ var c2=state.cars[i2]; if(Math.abs(c2.y - y) < h*0.25) sameRow++; }
+        if(sameRow>=3) break;
+        state.cars.push({x:x,y:y,w:w,h:h,img:img,lane:lane,ov:false});
+        placed++;
+      }
+    }
+
+    if(state.spawnBan >= state.rateBan){
+      state.spawnBan = 0;
+      var size = laneW()*0.5; var yb=-size; var margin=pRect().h*2.0;
+      var laneB = Math.floor(Math.random()*LANES), tries=0;
+      while(tries<10 && laneBlocked(laneB,yb,margin)){ laneB=(laneB+1)%LANES; tries++; }
+      var xb = laneB*laneW() + (laneW()-size)/2; state.bananas.push({x:xb,y:yb,size:size});
+    }
+
+    if(state.spawnGem >= state.rateGem){
+      state.spawnGem = 0;
+      var sizeG = laneW()*0.48; var yg=-sizeG; var marginG=pRect().h*2.0;
+      var laneG = Math.floor(Math.random()*LANES), triesG=0;
+      while(triesG<10 && laneBlocked(laneG,yg,marginG)){ laneG=(laneG+1)%LANES; triesG++; }
+      var xg = laneG*laneW() + (laneW()-sizeG)/2; var type = Math.random()<0.55?'diamond':'gold';
+      state.gems.push({x:xg,y:yg,size:sizeG,type:type});
+    }
+  }
+
+  // ====== TICK ======
+  function tick(dt){
+    if(state.hit){
+      state.hitTimer -= dt; state.flash=Math.max(0,state.flash-dt*1.8); state.shake=Math.max(0,state.shake-dt*20);
+      if(state.hitTimer<=0){ state.hit=false; gameOver(); }
+      return;
+    }
+
+    state.elapsed += dt;
+    var t = Math.min(30,state.elapsed); var a = state.accel0*(1 - t/30); state.speed = Math.min(state.maxSpeed, state.speed + a*dt);
+    state.level = Math.floor(state.score/100)+1;
+
+    spawn(dt);
+
+    for(var i=state.cars.length-1;i>=0;i--){
+      var c = state.cars[i]; c.y += state.speed*dt*60;
+      if(hit(pRect(),{x:c.x,y:c.y,w:c.w,h:c.h})){
+        state.hit=true; state.hitTimer=0.8; state.flash=1; state.shake=12; state.speed=0; playCrash();
+        return;
+      }
+      if(!c.ov && c.y > pRect().y + pRect().h){ c.ov=true; state.overtakes++; }
+      if(c.y > stage.clientHeight) state.cars.splice(i,1);
+    }
+
+    for(var j=state.bananas.length-1;j>=0;j--){
+      var b = state.bananas[j]; b.y += state.speed*dt*60;
+      if(hitCircleRect(pRect(), b)){
+        state.combo++; if(state.combo>state.maxCombo) state.maxCombo=state.combo;
+        var mul = (state.combo % 10 === 0 ? 2 : 1);
+        var add = 3 * mul; state.score += add;
+        addPickupFX(b.x+b.size/2,b.y+b.size/2,'#ffea00','+'+add);
+        playPickup();
+        state.bananas.splice(j,1);
+      } else if(b.y>stage.clientHeight) state.bananas.splice(j,1);
+    }
+
+    for(var k=state.gems.length-1;k>=0;k--){
+      var g = state.gems[k]; g.y += state.speed*dt*60;
+      if(hitCircleRect(pRect(), g)){
+        state.combo++; if(state.combo>state.maxCombo) state.maxCombo=state.combo;
+        var mul2 = (state.combo % 10 === 0 ? 2 : 1);
+        var base = (g.type==='diamond'?2:1); var add2 = base*mul2; state.score += add2;
+        var col = g.type==='diamond'?'#00e5ff':'#ffd700';
+        addPickupFX(g.x+g.size/2,g.y+g.size/2,col,'+'+add2);
+        playPickup();
+        state.gems.splice(k,1);
+      } else if(g.y>stage.clientHeight) state.gems.splice(k,1);
+    }
+
+    ui();
+  }
+
+  function gameOver(){ state.running=false; $('fs').textContent=(state.score|0); $('fo').textContent=(state.overtakes|0); $('fc').textContent=(state.maxCombo||1)+'×'; over.style.display='flex'; }
+
+  // ====== LOOP ======
+  var loopId=0;
+  function loop(now){
+    if(!state.running||state.paused) return;
+    now = now || performance.now();
+    var dt = Math.min(0.05,(now-state.last)/1000)||0; state.last=now;
+    // clear full res buffer (avoid black frame bugs)
+    var dpr = window.devicePixelRatio||1; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cv.width,cv.height);
+    if(state.shake>0){ ctx.save(); ctx.translate((Math.random()*2-1)*state.shake,(Math.random()*2-1)*state.shake); }
+    road(); drawCars(); drawBan(); drawGems(); drawPlayer(); drawFX(dt);
+    if(state.shake>0){ ctx.restore(); }
+    if(state.flash>0){ ctx.fillStyle='rgba(255,255,255,'+state.flash+')'; ctx.fillRect(0,0,cv.clientWidth,cv.clientHeight); }
+    tick(dt);
+    state.frames++;
+    loopId=requestAnimationFrame(loop);
+  }
+
+  // ====== AUDIO ======
+  var actx=null; function ensureAudio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+  function beep(freq,dur,attack,release,type,gain){ if(!actx) return; attack=attack||0.01; release=release||0.08; type=type||'sine'; gain=gain||0.12; var osc=actx.createOscillator(); var g=actx.createGain(); osc.type=type; osc.frequency.setValueAtTime(freq, actx.currentTime); g.gain.setValueAtTime(0, actx.currentTime); g.gain.linearRampToValueAtTime(gain, actx.currentTime+attack); g.gain.linearRampToValueAtTime(0, actx.currentTime+dur-release); osc.connect(g); g.connect(actx.destination); osc.start(); osc.stop(actx.currentTime+dur); }
+  function playPickup(){ ensureAudio(); beep(880,0.08,0.005,0.04,'triangle',0.10); setTimeout(function(){beep(1320,0.07,0.005,0.05,'triangle',0.09);},60); }
+  function playCrash(){ ensureAudio(); if(!actx) return; var dur=0.35; var noise=actx.createBufferSource(); var buffer=actx.createBuffer(1, actx.sampleRate*dur, actx.sampleRate); var data=buffer.getChannelData(0); for(var i=0;i<data.length;i++){ data[i]=(Math.random()*2-1)*Math.exp(-3*i/data.length); } noise.buffer=buffer; var g=actx.createGain(); g.gain.setValueAtTime(0.18, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur); noise.connect(g); g.connect(actx.destination); noise.start(); }
+
+  // enable audio on first clicks
+  ;['start','again','restart'].forEach(function(id){ var el=$(id); if(el){ el.addEventListener('click', ensureAudio, {once:true}); }});
+
+  // ====== TESTS (non-invasive) ======
+  window.__banmaoTests = {
+    run: function(){
+      console.group('%cBanmaoX tests','color:#0bf');
+      console.assert(typeof road==='function','road() must exist');
+      console.assert(typeof start==='function','start() must exist');
+      console.assert(typeof loop==='function','loop() must exist');
+      console.assert(typeof spawn==='function','spawn() must exist');
+      console.assert(typeof drawPlayer==='function','drawPlayer() must exist and be parseable');
+      console.assert(!!document.querySelector('style'), 'style tag exists');
+      reset(); seedInitial();
+      console.assert(state.cars.length>0 || state.bananas.length>0 || state.gems.length>0, 'seedInitial() should create gameplay entities');
+      console.groupEnd();
+    },
+    clickStart: function(){
+      $('start').click(); setTimeout(function(){
+        console.assert(state.running===true, 'Clicking #start should set running=true');
+        console.assert(state.frames>0, 'Game loop should render frames after start');
+      }, 300);
+    },
+    startHasEntities: function(){
+      start(); setTimeout(function(){
+        var count = state.cars.length + state.bananas.length + state.gems.length;
+        console.assert(count>0, 'After start, there should be initial entities');
+        console.assert(state.running===true, 'After start, game should be running');
+      }, 150);
+    },
+    runGuards: function(){
+      console.group('%cBanmaoX image guards','color:#0bf');
+      var dummy = new Image();
+      console.assert(!canDraw(dummy), 'canDraw() must be false for unloaded image');
+      try{ drawImageSafe(dummy,0,0,10,10); console.log('drawImageSafe ok'); }catch(e){ console.error('drawImageSafe threw', e); }
+      console.groupEnd();
+    }
+  };
+
+  // Expose some handles for debugging
+  window.__banmao = {state:state,start:start,fit:fit};
+
+  // Optional: log uncaught errors for easier debug
+  window.addEventListener('error', function(e){ console.error('Uncaught', e.message); });
+})();
+</script>
+</body>
+</html>
