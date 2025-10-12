@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
@@ -49,7 +49,7 @@
       <div class="toast" id="toast">COMBO x1</div>
       <div class="splash" id="splash">
         <img src="https://banmao-proxy-clean.vercel.app/gm4.png" alt="Banmao car" />
-        <h2>Nhấn START để bắt đầu chơi</h2>
+        <h2>Press START to begin</h2>
       </div>
     </div>
     <div class="row">
@@ -82,20 +82,20 @@
   var over = document.getElementById('over');
   var $ = function(id){ return document.getElementById(id); };
 
-  // ====== IMAGE HELPERS (fix InvalidStateError) ======
+  // ====== IMAGE HELPERS (avoid InvalidStateError) ======
   function makeImg(srcs){
     var img = new Image(); img.crossOrigin='anonymous';
     var i = 0; var ready=false; var failed=false;
     function tryNext(){ if(i>=srcs.length){ failed=true; return; } img.src = srcs[i++]; }
     img.onload = function(){ ready = (img.naturalWidth>0 && img.naturalHeight>0); };
-    img.onerror = tryNext; // thử nguồn tiếp theo nếu lỗi
+    img.onerror = tryNext; // try next source on error
     tryNext();
     return {img:img, isReady:function(){ return ready && img.complete && img.naturalWidth>0; }, failed:function(){return failed;}};
   }
   function canDraw(image){ return !!(image && image.complete && image.naturalWidth>0 && image.naturalHeight>0); }
   function drawImageSafe(image,x,y,w,h){
     if(!canDraw(image)) return false;
-    try{ ctx.drawImage(image,x,y,w,h); return true; }catch(e){ /* tránh crash nếu state=broken */ return false; }
+    try{ ctx.drawImage(image,x,y,w,h); return true; }catch(e){ /* prevent crash if state=broken */ return false; }
   }
 
   // ====== ASSETS ======
@@ -103,7 +103,7 @@
   var obs1A = makeImg(['https://banmao-proxy-clean.vercel.app/gm2.png']);
   var obs2A = makeImg(['https://banmao-proxy-clean.vercel.app/gm3.png']);
   var banA  = makeImg(['https://banmao-proxy-clean.vercel.app/bm9.png']);
-  // logo OKX: có thể bị chặn, chuẩn bị fallback vẽ vector
+  // OKX logo: may be blocked, prepare vector fallback
   var okxA  = makeImg([
     'https://seeklogo.com/images/O/okx-logo-1E0A4DFF74-seeklogo.com.png',
     'https://upload.wikimedia.org/wikipedia/commons/7/75/OKX_Logo.png'
@@ -133,12 +133,12 @@
     lane:2,
     cars:[], bananas:[], gems:[],
     spawnCar:0, spawnBan:0, spawnGem:0,
-    rateCar:2.0, // giảm 50% tần suất xe so với mặc định 1.0
+    rateCar:2.0, // 50% fewer cars vs default 1.0
     rateBan:3.0, rateGem:4.0,
     hit:false, hitTimer:0, flash:0, shake:0,
     fx:[],
-    seeded:false, // đảm bảo có vật thể ngay khi START
-    frames:0      // đếm số frame để test
+    seeded:false, // ensure entities exist immediately at START
+    frames:0      // frame counter for tests
   };
 
   function ui(){ $('s').textContent = (state.score|0); $('ot').textContent = (state.overtakes|0); $('cb').textContent = (Math.max(1,state.combo))+'×'; }
@@ -182,7 +182,7 @@
     state.running=true; state.paused=false; $('pause').textContent='PAUSE';
     state.last=performance.now();
     cancelAnimationFrame(loopId);
-    // gọi loop ngay lập tức + rAF để tránh môi trường chặn khung đầu
+    // call loop immediately + rAF to avoid environments blocking the first frame
     loop(state.last);
     state.frames++;
     loopId=requestAnimationFrame(loop);
@@ -190,38 +190,35 @@
 
   // ====== DRAW ======
   function drawOKXVector(x,y,w,h,alpha){
-    // Vẽ chữ OKX theo dạng lưới ô vuông (gần giống logo bạn gửi)
-    // - "O": hình vuông đặc có lỗ trống giữa
-    // - "K": ma trận 3x3 các ô tạo thành chữ K khối
-    // - "X": ma trận 3x3 các ô tạo thành chữ X
+    // Draw “OKX” as a grid of squares (approximation of the logo)
+    // - "O": solid square with a hole
+    // - "K": 3x3 blocky K
+    // - "X": 3x3 blocky X
     ctx.save();
     ctx.globalAlpha = alpha;
     var totalW = w, totalH = h;
-    var unit = Math.min(totalH*0.9, totalW*0.9); // giới hạn bên trong
-    var scale = unit/3; // mỗi ô là scale x scale
-    var gap = scale*0.25; // khoảng cách giữa các ô trong cùng một chữ
+    var unit = Math.min(totalH*0.9, totalW*0.9);
+    var scale = unit/3; // each cell
+    var gap = scale*0.25;
 
-    // Bố cục: 3 chữ, có khoảng cách giữa chữ
     var letterGap = scale*0.9;
     var oW = scale*3, kW = scale*3, xW = scale*3;
     var fullW = oW + letterGap + kW + letterGap + xW;
     var startX = x + (w - fullW)/2;
     var baseY  = y + (h - scale*3)/2;
 
-    // Helper: vẽ 1 ô
     function box(ix, iy, lx, ly){
       ctx.fillRect(lx + ix*(scale+gap), ly + iy*(scale+gap), scale, scale);
     }
 
-    // ---- O (khối vuông đặc có lỗ giữa) ----
+    // ---- O ----
     var ox = startX, oy = baseY;
     ctx.fillStyle = '#000';
-    // khung ngoài 3x3
     for(var j=0;j<3;j++) for(var i=0;i<3;i++) box(i,j,ox,oy);
-    // khoét lỗ giữa
+    // cut inner hole
     ctx.clearRect(ox + (scale+gap) + gap*0.5, oy + (scale+gap) + gap*0.5, scale-gap, scale-gap);
 
-    // ---- K (ma trận 3x3) ----
+    // ---- K ----
     var kx = ox + oW + letterGap, ky = baseY;
     var K = [
       [1,0,1],
@@ -231,7 +228,7 @@
     ctx.fillStyle = '#000';
     for(var r=0;r<3;r++) for(var c=0;c<3;c++) if(K[r][c]) box(c,r,kx,ky);
 
-    // ---- X (ma trận 3x3) ----
+    // ---- X ----
     var xx = kx + kW + letterGap, xy = baseY;
     var X = [
       [1,0,1],
@@ -254,7 +251,7 @@
     ctx.fillRect(0,0,12,h);
     ctx.fillRect(w-12,0,12,h);
 
-    // Logo OKX giữa đường, mờ dần khi xe tới gần
+    // OKX logo in the middle of the road, fades as the car gets close
     var logoW = laneW()*1.8;
     var logoH = logoW*0.7;
     var logoX = (w-logoW)/2;
@@ -286,7 +283,7 @@
   function seedInitial(){
     if(state.seeded) return;
     var lanes=[0,1,2,3,4];
-    var count = 2 + Math.floor(Math.random()*2); // 2 hoặc 3
+    var count = 2 + Math.floor(Math.random()*2); // 2 or 3
     var rowY = -player.h()*1.2;
     for(var i=0;i<count && lanes.length;i++){
       var idx = Math.floor(Math.random()*lanes.length);
@@ -295,7 +292,7 @@
       var img = (Math.random()<0.5?imgObs1:imgObs2);
       state.cars.push({x:x,y:y,w:w,h:h,img:img,lane:lane,ov:false});
     }
-    // thả 1 chuối và 1 gem ở phía trước
+    // drop 1 banana and 1 gem ahead
     var sizeB = laneW()*0.5; var laneB = Math.floor(Math.random()*LANES); var xB = laneB*laneW() + (laneW()-sizeB)/2; var yB = -sizeB*3.2; state.bananas.push({x:xB,y:yB,size:sizeB});
     var sizeG = laneW()*0.48; var laneG = (laneB+2)%LANES; var xG = laneG*laneW() + (laneW()-sizeG)/2; var yG = -sizeG*5.0; var type = Math.random()<0.55?'diamond':'gold'; state.gems.push({x:xG,y:yG,size:sizeG,type:type});
     state.seeded=true;
